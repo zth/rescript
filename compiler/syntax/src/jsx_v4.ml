@@ -1286,9 +1286,21 @@ let transform_structure_item ~config item =
       pstr_desc =
         Pstr_primitive ({pval_attributes; pval_type} as value_description);
     } as pstr -> (
-    match List.filter Jsx_common.has_attr pval_attributes with
-    | [] -> [item]
-    | [_] ->
+    match
+      ( List.filter Jsx_common.has_attr pval_attributes,
+        List.filter Jsx_common.has_attr_with_props pval_attributes )
+    with
+    | [], [] -> [item]
+    | _, [_] ->
+      Jsx_common.raise_error ~loc:pstr_loc
+        "Components cannot be defined as externals when using \
+         @react.componentWithProps.\n\n\
+         If you intended to define an external for a React component using a \
+         props type,\n\
+         use the type React.component<props> instead.\n\
+         Alternatively, use @react.component for an external definition with \
+         labeled arguments."
+    | [_], [] ->
       check_multiple_components ~config ~loc:pstr_loc;
       check_string_int_attribute_iter.structure_item
         check_string_int_attribute_iter item;
