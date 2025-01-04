@@ -650,7 +650,6 @@ Completable: Cpath array<int>->m
 Package opens Pervasives.JsxModules.place holder
 ContextPath array<int>->m
 ContextPath array<int>
-CPPipe env:Completion
 Path Js.Array2.m
 [{
     "label": "Js.Array2.mapi",
@@ -672,7 +671,6 @@ Completable: Cpath string->toU
 Package opens Pervasives.JsxModules.place holder
 ContextPath string->toU
 ContextPath string
-CPPipe env:Completion
 Path Js.String2.toU
 [{
     "label": "Js.String2.toUpperCase",
@@ -689,7 +687,6 @@ Package opens Pervasives.JsxModules.place holder
 ContextPath Value[op]->e
 ContextPath Value[op]
 Path op
-CPPipe env:Completion
 Path Belt.Option.e
 [{
     "label": "Belt.Option.eqU",
@@ -714,8 +711,6 @@ Package opens Pervasives.JsxModules.place holder
 ContextPath Value[fa]->
 ContextPath Value[fa]
 Path fa
-CPPipe env:Completion
-CPPipe type path:ForAuto.t
 CPPipe pathFromEnv:ForAuto found:true
 Path ForAuto.
 [{
@@ -957,6 +952,11 @@ Package opens Pervasives.JsxModules.place holder
 ContextPath Value[r].""
 ContextPath Value[r]
 Path r
+ContextPath Value[r]->
+ContextPath Value[r]
+Path r
+CPPipe pathFromEnv: found:true
+Path Completion.
 [{
     "label": "x",
     "kind": 5,
@@ -979,6 +979,11 @@ Package opens Pervasives.JsxModules.place holder
 ContextPath Value[Objects, Rec, recordVal].""
 ContextPath Value[Objects, Rec, recordVal]
 Path Objects.Rec.recordVal
+ContextPath Value[Objects, Rec, recordVal]->
+ContextPath Value[Objects, Rec, recordVal]
+Path Objects.Rec.recordVal
+CPPipe pathFromEnv:Rec found:true
+Path Objects.Rec.
 [{
     "label": "xx",
     "kind": 5,
@@ -1056,6 +1061,22 @@ ContextPath Value[q].aa.""
 ContextPath Value[q].aa
 ContextPath Value[q]
 Path q
+ContextPath Value[q]->aa
+ContextPath Value[q]
+Path q
+CPPipe pathFromEnv: found:true
+Path Completion.aa
+ContextPath Value[q].aa->
+ContextPath Value[q].aa
+ContextPath Value[q]
+Path q
+ContextPath Value[q]->aa
+ContextPath Value[q]
+Path q
+CPPipe pathFromEnv: found:true
+Path Completion.aa
+CPPipe pathFromEnv: found:true
+Path Completion.
 [{
     "label": "x",
     "kind": 5,
@@ -1079,6 +1100,22 @@ ContextPath Value[q].aa.n
 ContextPath Value[q].aa
 ContextPath Value[q]
 Path q
+ContextPath Value[q]->aa
+ContextPath Value[q]
+Path q
+CPPipe pathFromEnv: found:true
+Path Completion.aa
+ContextPath Value[q].aa->n
+ContextPath Value[q].aa
+ContextPath Value[q]
+Path q
+ContextPath Value[q]->aa
+ContextPath Value[q]
+Path q
+CPPipe pathFromEnv: found:true
+Path Completion.aa
+CPPipe pathFromEnv: found:true
+Path Completion.n
 [{
     "label": "name",
     "kind": 5,
@@ -1295,6 +1332,12 @@ ContextPath Value[FAO, forAutoObject]["forAutoLabel"].""
 ContextPath Value[FAO, forAutoObject]["forAutoLabel"]
 ContextPath Value[FAO, forAutoObject]
 Path FAO.forAutoObject
+ContextPath Value[FAO, forAutoObject]["forAutoLabel"]->
+ContextPath Value[FAO, forAutoObject]["forAutoLabel"]
+ContextPath Value[FAO, forAutoObject]
+Path FAO.forAutoObject
+CPPipe pathFromEnv:FAR found:true
+Path FAR.
 [{
     "label": "forAuto",
     "kind": 5,
@@ -1320,8 +1363,12 @@ ContextPath Value[FAO, forAutoObject]["forAutoLabel"].forAuto
 ContextPath Value[FAO, forAutoObject]["forAutoLabel"]
 ContextPath Value[FAO, forAutoObject]
 Path FAO.forAutoObject
-CPPipe env:Completion envFromCompletionItem:Completion.FAR
-CPPipe type path:ForAuto.t
+ContextPath Value[FAO, forAutoObject]["forAutoLabel"]->forAuto
+ContextPath Value[FAO, forAutoObject]["forAutoLabel"]
+ContextPath Value[FAO, forAutoObject]
+Path FAO.forAutoObject
+CPPipe pathFromEnv:FAR found:true
+Path FAR.forAuto
 CPPipe pathFromEnv:ForAuto found:false
 Path ForAuto.
 [{
@@ -1403,6 +1450,11 @@ Resolved opens 2 Completion Completion
 ContextPath Value[_z].""
 ContextPath Value[_z]
 Path _z
+ContextPath Value[_z]->
+ContextPath Value[_z]
+Path _z
+CPPipe pathFromEnv: found:true
+Path Completion.
 [{
     "label": "x",
     "kind": 5,
@@ -1560,6 +1612,11 @@ Resolved opens 2 Completion Completion
 ContextPath Value[funRecord].someFun
 ContextPath Value[funRecord]
 Path funRecord
+ContextPath Value[funRecord]->someFun
+ContextPath Value[funRecord]
+Path funRecord
+CPPipe pathFromEnv: found:true
+Path Completion.someFun
 Found type for function (~name: string) => unit
 [{
     "label": "name",
@@ -1580,6 +1637,12 @@ ContextPath Value[retAA](Nolabel).""
 ContextPath Value[retAA](Nolabel)
 ContextPath Value[retAA]
 Path retAA
+ContextPath Value[retAA](Nolabel, Nolabel)->
+ContextPath Value[retAA](Nolabel, Nolabel)
+ContextPath Value[retAA]
+Path retAA
+CPPipe pathFromEnv: found:true
+Path Completion.
 [{
     "label": "x",
     "kind": 5,
@@ -2163,6 +2226,11 @@ Resolved opens 2 Completion Completion
 ContextPath Value[funRecord].""
 ContextPath Value[funRecord]
 Path funRecord
+ContextPath Value[funRecord]->
+ContextPath Value[funRecord]
+Path funRecord
+CPPipe pathFromEnv: found:true
+Path Completion.
 [{
     "label": "someFun",
     "kind": 5,
@@ -2188,7 +2256,6 @@ Package opens Pervasives.JsxModules.place holder
 Resolved opens 3 Completion Completion Js
 ContextPath array->ma
 ContextPath array
-CPPipe env:Completion
 Path Js.Array2.ma
 [{
     "label": "Array2.mapi",
@@ -2341,7 +2408,6 @@ Package opens Pervasives.JsxModules.place holder
 Resolved opens 2 Completion Completion
 ContextPath int->t
 ContextPath int
-CPPipe env:Completion
 Path Belt.Int.t
 [{
     "label": "Belt.Int.toString",
@@ -2365,7 +2431,6 @@ Package opens Pervasives.JsxModules.place holder
 Resolved opens 2 Completion Completion
 ContextPath float->t
 ContextPath float
-CPPipe env:Completion
 Path Belt.Float.t
 [{
     "label": "Belt.Float.toInt",
@@ -2390,7 +2455,6 @@ Resolved opens 2 Completion Completion
 ContextPath Value[ok]->g
 ContextPath Value[ok]
 Path ok
-CPPipe env:Completion
 Path Belt.Result.g
 [{
     "label": "Belt.Result.getExn",
@@ -2416,6 +2480,11 @@ Resolved opens 2 Completion Completion
 ContextPath Value[rWithDepr].so
 ContextPath Value[rWithDepr]
 Path rWithDepr
+ContextPath Value[rWithDepr]->so
+ContextPath Value[rWithDepr]
+Path rWithDepr
+CPPipe pathFromEnv: found:true
+Path Completion.so
 [{
     "label": "someInt",
     "kind": 5,
@@ -2474,7 +2543,6 @@ ContextPath Value[uncurried](Nolabel)->toS
 ContextPath Value[uncurried](Nolabel)
 ContextPath Value[uncurried]
 Path uncurried
-CPPipe env:Completion
 Path Belt.Int.toS
 [{
     "label": "Belt.Int.toString",
