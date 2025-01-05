@@ -12,6 +12,10 @@
 
 # 12.0.0-alpha.7 (Unreleased)
 
+#### :bug: Bug fix
+
+- Editor: Fix issue where completions would stop working in some scenarios with inline records. https://github.com/rescript-lang/rescript/pull/7227
+
 #### :nail_care: Polish
 
 - Add all standard CSS properties to `JsxDOMStyle`. https://github.com/rescript-lang/rescript/pull/7205
