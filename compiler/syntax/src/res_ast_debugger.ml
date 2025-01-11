@@ -679,9 +679,6 @@ module SexpAst = struct
       | Pexp_coerce (expr, (), typexpr) ->
         Sexp.list [Sexp.atom "Pexp_coerce"; expression expr; core_type typexpr]
       | Pexp_send _ -> Sexp.list [Sexp.atom "Pexp_send"]
-      | Pexp_new _ -> Sexp.list [Sexp.atom "Pexp_new"]
-      | Pexp_setinstvar _ -> Sexp.list [Sexp.atom "Pexp_setinstvar"]
-      | Pexp_override _ -> Sexp.list [Sexp.atom "Pexp_override"]
       | Pexp_letmodule (mod_name, mod_expr, expr) ->
         Sexp.list
           [
@@ -699,7 +696,6 @@ module SexpAst = struct
           ]
       | Pexp_assert expr -> Sexp.list [Sexp.atom "Pexp_assert"; expression expr]
       | Pexp_lazy expr -> Sexp.list [Sexp.atom "Pexp_lazy"; expression expr]
-      | Pexp_poly _ -> Sexp.list [Sexp.atom "Pexp_poly"]
       | Pexp_newtype (lbl, expr) ->
         Sexp.list
           [Sexp.atom "Pexp_newtype"; string lbl.Asttypes.txt; expression expr]

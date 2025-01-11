@@ -271,18 +271,12 @@ let rec add_expr bv exp =
     add_expr bv e1;
     add_type bv ty2
   | Pexp_send (e, _m) -> add_expr bv e
-  | Pexp_new li -> add bv li
-  | Pexp_setinstvar (_v, e) -> add_expr bv e
-  | Pexp_override sel -> List.iter (fun (_s, e) -> add_expr bv e) sel
   | Pexp_letmodule (id, m, e) ->
     let b = add_module_binding bv m in
     add_expr (StringMap.add id.txt b bv) e
   | Pexp_letexception (_, e) -> add_expr bv e
   | Pexp_assert e -> add_expr bv e
   | Pexp_lazy e -> add_expr bv e
-  | Pexp_poly (e, t) ->
-    add_expr bv e;
-    add_opt add_type bv t
   | Pexp_newtype (_, e) -> add_expr bv e
   | Pexp_pack m -> add_module bv m
   | Pexp_open (_ovf, m, e) ->

@@ -295,10 +295,6 @@ and expression_desc =
     (* (E :> T)        (None, T)
          *)
   | Pexp_send of expression * label loc (*  E # m *)
-  | Pexp_new of Longident.t loc (* new M.c *)
-  | Pexp_setinstvar of label loc * expression (* x <- 2 *)
-  | Pexp_override of (label loc * expression) list
-    (* {< x1 = E1; ...; Xn = En >} *)
   | Pexp_letmodule of string loc * module_expr * expression
     (* let module M = ME in E *)
   | Pexp_letexception of extension_constructor * expression
@@ -308,11 +304,6 @@ and expression_desc =
        Note: "assert false" is treated in a special way by the
        type-checker. *)
   | Pexp_lazy of expression (* lazy E *)
-  | Pexp_poly of expression * core_type option
-    (* Used for method bodies.
-
-       Can only be used as the expression under Cfk_concrete
-       for methods (not values). *)
   | Pexp_newtype of string loc * expression (* fun (type t) -> E *)
   | Pexp_pack of module_expr
     (* (module ME)

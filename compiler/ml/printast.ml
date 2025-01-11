@@ -318,13 +318,6 @@ and expression i ppf x =
   | Pexp_send (e, s) ->
     line i ppf "Pexp_send \"%s\"\n" s.txt;
     expression i ppf e
-  | Pexp_new li -> line i ppf "Pexp_new %a\n" fmt_longident_loc li
-  | Pexp_setinstvar (s, e) ->
-    line i ppf "Pexp_setinstvar %a\n" fmt_string_loc s;
-    expression i ppf e
-  | Pexp_override l ->
-    line i ppf "Pexp_override\n";
-    list i string_x_expression ppf l
   | Pexp_letmodule (s, me, e) ->
     line i ppf "Pexp_letmodule %a\n" fmt_string_loc s;
     module_expr i ppf me;
@@ -339,10 +332,6 @@ and expression i ppf x =
   | Pexp_lazy e ->
     line i ppf "Pexp_lazy\n";
     expression i ppf e
-  | Pexp_poly (e, cto) ->
-    line i ppf "Pexp_poly\n";
-    expression i ppf e;
-    option i core_type ppf cto
   | Pexp_newtype (s, e) ->
     line i ppf "Pexp_newtype \"%s\"\n" s.txt;
     expression i ppf e
@@ -665,10 +654,6 @@ and value_binding i ppf x =
   attributes (i + 1) ppf x.pvb_attributes;
   pattern (i + 1) ppf x.pvb_pat;
   expression (i + 1) ppf x.pvb_expr
-
-and string_x_expression i ppf (s, e) =
-  line i ppf "<override> %a\n" fmt_string_loc s;
-  expression (i + 1) ppf e
 
 and longident_x_expression i ppf (li, e, opt) =
   line i ppf "%a%s\n" fmt_longident_loc li (if opt then "?" else "");
