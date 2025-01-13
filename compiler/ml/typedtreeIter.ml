@@ -118,8 +118,6 @@ end = struct
     | Tstr_recmodule list -> List.iter iter_module_binding list
     | Tstr_modtype mtd -> iter_module_type_declaration mtd
     | Tstr_open _ -> ()
-    | Tstr_class () -> ()
-    | Tstr_class_type () -> ()
     | Tstr_include incl -> iter_module_expr incl.incl_mod
     | Tstr_attribute _ -> ());
     Iter.leave_structure_item item
@@ -219,7 +217,7 @@ end = struct
         | cstr, _, _attrs -> (
           match cstr with
           | Texp_constraint ct -> iter_core_type ct
-          | Texp_coerce ((), cty2) -> iter_core_type cty2
+          | Texp_coerce cty2 -> iter_core_type cty2
           | Texp_open _ -> ()
           | Texp_newtype _ -> ()))
       exp.exp_extra;
@@ -321,8 +319,6 @@ end = struct
     | Tsig_modtype mtd -> iter_module_type_declaration mtd
     | Tsig_open _ -> ()
     | Tsig_include incl -> iter_module_type incl.incl_mod
-    | Tsig_class () -> ()
-    | Tsig_class_type () -> ()
     | Tsig_attribute _ -> ());
     Iter.leave_signature_item item
 

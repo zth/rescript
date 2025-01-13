@@ -67,7 +67,7 @@ and expression = {
 
 and exp_extra =
   | Texp_constraint of core_type
-  | Texp_coerce of unit * core_type
+  | Texp_coerce of core_type
   | Texp_open of override_flag * Path.t * Longident.t loc * Env.t
   | Texp_newtype of string
 
@@ -133,8 +133,6 @@ and record_label_definition =
   | Kept of Types.type_expr
   | Overridden of Longident.t loc * expression
 
-(* Value expressions for the class language *)
-
 (* Value expressions for the module language *)
 and module_expr = {
   mod_desc: module_expr_desc;
@@ -180,8 +178,6 @@ and structure_item_desc =
   | Tstr_recmodule of module_binding list
   | Tstr_modtype of module_type_declaration
   | Tstr_open of open_description
-  | Tstr_class of unit
-  | Tstr_class_type of unit
   | Tstr_include of include_declaration
   | Tstr_attribute of attribute
 
@@ -257,8 +253,6 @@ and signature_item_desc =
   | Tsig_modtype of module_type_declaration
   | Tsig_open of open_description
   | Tsig_include of include_description
-  | Tsig_class of unit
-  | Tsig_class_type of unit
   | Tsig_attribute of attribute
 
 and module_declaration = {

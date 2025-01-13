@@ -197,14 +197,11 @@ let iter_expression f e =
     | Pstr_eval (e, _) -> expr e
     | Pstr_value (_, pel) -> List.iter binding pel
     | Pstr_primitive _ | Pstr_type _ | Pstr_typext _ | Pstr_exception _
-    | Pstr_modtype _ | Pstr_open _
-    | Pstr_class_type ()
-    | Pstr_attribute _ | Pstr_extension _ ->
+    | Pstr_modtype _ | Pstr_open _ | Pstr_attribute _ | Pstr_extension _ ->
       ()
     | Pstr_include {pincl_mod = me} | Pstr_module {pmb_expr = me} ->
       module_expr me
     | Pstr_recmodule l -> List.iter (fun x -> module_expr x.pmb_expr) l
-    | Pstr_class () -> ()
   in
 
   expr e
@@ -477,7 +474,6 @@ let rec build_as_type env p =
          {
            row_fields = [(l, Rpresent ty)];
            row_more = newvar ();
-           row_bound = ();
            row_name = None;
            row_fixed = false;
            row_closed = false;
@@ -556,7 +552,6 @@ let build_or_pat env loc lid =
     {
       row_fields = List.rev fields;
       row_more = newvar ();
-      row_bound = ();
       row_closed = false;
       row_fixed = false;
       row_name = Some (path, tyl);
@@ -1432,7 +1427,6 @@ and type_pat_aux ~constrs ~labels ~no_existentials ~mode ~explode ~env sp
     let row =
       {
         row_fields = [(l, Reither (sarg = None, arg_type, true, ref None))];
-        row_bound = ();
         row_closed = false;
         row_more = newvar ();
         row_fixed = false;
@@ -1853,8 +1847,7 @@ and is_nonexpansive_mod mexp =
       (fun item ->
         match item.str_desc with
         | Tstr_eval _ | Tstr_primitive _ | Tstr_type _ | Tstr_modtype _
-        | Tstr_open _
-        | Tstr_class_type () ->
+        | Tstr_open _ ->
           true
         | Tstr_value (_, pat_exp_list) ->
           List.for_all (fun vb -> is_nonexpansive vb.vb_expr) pat_exp_list
@@ -1873,7 +1866,6 @@ and is_nonexpansive_mod mexp =
               | {ext_kind = Text_decl _} -> false
               | {ext_kind = Text_rebind _} -> true)
             te.tyext_constructors
-        | Tstr_class () -> assert false (* impossible *)
         | Tstr_attribute _ -> true)
       str.str_items
   | Tmod_apply _ -> false
@@ -2129,7 +2121,6 @@ let check_absent_variant env =
           {
             row_fields = [(s, Reither (arg = None, ty_arg, true, ref None))];
             row_more = newvar ();
-            row_bound = ();
             row_closed = false;
             row_fixed = false;
             row_name = None;
@@ -2564,7 +2555,6 @@ and type_expect_ ?type_clash_context ?in_function ?(recarg = Rejected) env sexp
                  {
                    row_fields = [(l, Rpresent arg_type)];
                    row_more = newvar ();
-                   row_bound = ();
                    row_closed = false;
                    row_fixed = false;
                    row_name = None;
@@ -2979,7 +2969,7 @@ and type_expect_ ?type_clash_context ?in_function ?(recarg = Rejected) env sexp
         exp_attributes = arg.exp_attributes;
         exp_env = env;
         exp_extra =
-          (Texp_coerce ((), cty'), loc, sexp.pexp_attributes) :: arg.exp_extra;
+          (Texp_coerce cty', loc, sexp.pexp_attributes) :: arg.exp_extra;
       }
   | Pexp_send (e, {txt = met}) -> (
     let obj = type_exp env e in
