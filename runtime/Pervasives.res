@@ -55,8 +55,8 @@ external mod: ('a, 'a) => 'a = "%mod"
 /* Comparisons */
 /* Note: Later comparisons will be converted to unified operations too */
 
-external \"=": ('a, 'a) => bool = "%equal"
-external \"<>": ('a, 'a) => bool = "%notequal"
+external \"==": ('a, 'a) => bool = "%equal"
+external \"!=": ('a, 'a) => bool = "%notequal"
 external \"<": ('a, 'a) => bool = "%lessthan"
 external \">": ('a, 'a) => bool = "%greaterthan"
 external \"<=": ('a, 'a) => bool = "%lessequal"
@@ -64,8 +64,8 @@ external \">=": ('a, 'a) => bool = "%greaterequal"
 external compare: ('a, 'a) => int = "%compare"
 external min: ('a, 'a) => 'a = "%min"
 external max: ('a, 'a) => 'a = "%max"
-external \"==": ('a, 'a) => bool = "%eq"
-external \"!=": ('a, 'a) => bool = "%noteq"
+external \"===": ('a, 'a) => bool = "%eq"
+external \"!==": ('a, 'a) => bool = "%noteq"
 
 /* Boolean operations */
 
@@ -230,7 +230,7 @@ let classify_float = (x: float): fpclass =>
 
 /* String and byte sequence operations -- more in modules String and Bytes */
 
-external \"^": (string, string) => string = "%string_concat"
+external \"++": (string, string) => string = "%string_concat"
 
 /* Character operations -- more in module Char */
 

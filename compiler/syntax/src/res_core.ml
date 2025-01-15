@@ -391,16 +391,11 @@ let build_longident words =
 
 let make_infix_operator (p : Parser.t) token start_pos end_pos =
   let stringified_token =
-    if token = Token.PlusPlus then "^"
-    else if token = Token.BangEqual then "<>"
-    else if token = Token.BangEqualEqual then "!="
-    else if token = Token.Equal then (
+    if token = Token.Equal then (
       (* TODO: could have a totally different meaning like x->fooSet(y)*)
       Parser.err ~start_pos ~end_pos p
         (Diagnostics.message "Did you mean `==` here?");
       "=")
-    else if token = Token.EqualEqual then "="
-    else if token = Token.EqualEqualEqual then "=="
     else Token.to_string token
   in
   let loc = mk_loc start_pos end_pos in
@@ -2327,7 +2322,7 @@ and parse_template_expr ?prefix p =
   in
 
   let hidden_operator =
-    let op = Location.mknoloc (Longident.Lident "^") in
+    let op = Location.mknoloc (Longident.Lident "++") in
     Ast_helper.Exp.ident op
   in
   let concat (e1 : Parsetree.expression) (e2 : Parsetree.expression) =

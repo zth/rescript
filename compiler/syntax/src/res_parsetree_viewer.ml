@@ -270,8 +270,8 @@ let operator_precedence operator =
   | ":=" -> 1
   | "||" -> 2
   | "&&" -> 3
-  | "=" | "==" | "<" | ">" | "!=" | "<>" | "!==" | "<=" | ">=" | "|>" -> 4
-  | "+" | "+." | "-" | "-." | "^" -> 5
+  | "==" | "===" | "<" | ">" | "!=" | "<>" | "!==" | "<=" | ">=" | "|>" -> 4
+  | "+" | "+." | "-" | "-." | "++" -> 5
   | "*" | "*." | "/" | "/." | "%" -> 6
   | "**" -> 7
   | "#" | "##" | "->" -> 8
@@ -296,9 +296,9 @@ let is_unary_expression expr =
 (* TODO: tweak this to check for ghost ^ as template literal *)
 let is_binary_operator operator =
   match operator with
-  | ":=" | "||" | "&&" | "=" | "==" | "<" | ">" | "!=" | "!==" | "<=" | ">="
-  | "|>" | "+" | "+." | "-" | "-." | "^" | "*" | "*." | "/" | "/." | "**" | "->"
-  | "<>" | "%" ->
+  | ":=" | "||" | "&&" | "==" | "===" | "<" | ">" | "!=" | "!==" | "<=" | ">="
+  | "|>" | "+" | "+." | "-" | "-." | "++" | "*" | "*." | "/" | "/." | "**"
+  | "->" | "<>" | "%" ->
     true
   | _ -> false
 
@@ -314,14 +314,14 @@ let is_binary_expression expr =
         args = [(Nolabel, _operand1); (Nolabel, _operand2)];
       }
     when is_binary_operator operator
-         && not (operator_loc.loc_ghost && operator = "^")
+         && not (operator_loc.loc_ghost && operator = "++")
          (* template literal *) ->
     true
   | _ -> false
 
 let is_equality_operator operator =
   match operator with
-  | "=" | "==" | "<>" | "!=" -> true
+  | "==" | "===" | "!=" | "!==" -> true
   | _ -> false
 
 let is_rhs_binary_operator operator =
@@ -643,7 +643,7 @@ let is_template_literal expr =
   match expr.pexp_desc with
   | Pexp_apply
       {
-        funct = {pexp_desc = Pexp_ident {txt = Longident.Lident "^"}};
+        funct = {pexp_desc = Pexp_ident {txt = Longident.Lident "++"}};
         args = [(Nolabel, _); (Nolabel, _)];
       }
     when has_template_literal_attr expr.pexp_attributes ->

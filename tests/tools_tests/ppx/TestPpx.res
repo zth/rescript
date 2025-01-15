@@ -50,3 +50,11 @@ module Pipe = {
   let plus = (x, y) => x + y
   let z = 1->plus(2)
 }
+
+let concat = "a" ++ "b"
+
+let neq = 3 != 3
+let neq2 = 3 !== 3
+
+let eq = 3 == 3
+let eq2 = 3 === 3
