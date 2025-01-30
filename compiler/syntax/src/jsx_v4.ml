@@ -10,7 +10,7 @@ let module_access_name config value =
 
 let nolabel = Nolabel
 
-let labelled str = Labelled str
+let labelled str = Labelled {txt = str; loc = Location.none}
 
 let is_optional str =
   match str with
@@ -28,7 +28,7 @@ let is_forward_ref = function
 
 let get_label str =
   match str with
-  | Optional str | Labelled str -> str
+  | Optional {txt = str} | Labelled {txt = str} -> str
   | Nolabel -> ""
 
 let constant_string ~loc str =
@@ -198,8 +198,8 @@ let record_from_props ~loc ~remove_key call_arguments =
     | (Nolabel, {pexp_loc}, _) :: _rest ->
       Jsx_common.raise_error ~loc:pexp_loc
         "JSX: found non-labelled argument before the last position"
-    | ((Labelled txt, {pexp_loc}, _) as prop) :: rest
-    | ((Optional txt, {pexp_loc}, _) as prop) :: rest ->
+    | ((Labelled {txt}, {pexp_loc}, _) as prop) :: rest
+    | ((Optional {txt}, {pexp_loc}, _) as prop) :: rest ->
       if txt = spread_props_label then
         match acc with
         | [] -> remove_last_position_unit_aux rest (prop :: acc)
@@ -212,7 +212,10 @@ let record_from_props ~loc ~remove_key call_arguments =
   let props, props_to_spread =
     remove_last_position_unit_aux call_arguments []
     |> List.rev
-    |> List.partition (fun (label, _, _) -> label <> labelled "_spreadProps")
+    |> List.partition (fun (label, _, _) ->
+           match label with
+           | Labelled {txt = "_spreadProps"} -> false
+           | _ -> true)
   in
   let props =
     if remove_key then
@@ -253,7 +256,11 @@ let make_props_type_params_tvar named_type_list =
   named_type_list
   |> List.filter_map (fun (_isOptional, label, _, loc, _interiorType) ->
          if label = "key" then None
-         else Some (Typ.var ~loc @@ safe_type_from_value (Labelled label)))
+         else
+           Some
+             (Typ.var ~loc
+             @@ safe_type_from_value
+                  (Labelled {txt = label; loc = Location.none})))
 
 let strip_option core_type =
   match core_type with
@@ -322,10 +329,12 @@ let make_label_decls named_type_list =
              interior_type
          else if is_optional then
            Type.field ~loc ~attrs ~optional:true {txt = label; loc}
-             (Typ.var @@ safe_type_from_value @@ Labelled label)
+             (Typ.var @@ safe_type_from_value
+             @@ Labelled {txt = label; loc = Location.none})
          else
            Type.field ~loc ~attrs {txt = label; loc}
-             (Typ.var @@ safe_type_from_value @@ Labelled label))
+             (Typ.var @@ safe_type_from_value
+             @@ Labelled {txt = label; loc = Location.none}))
 
 let make_type_decls ~attrs props_name loc named_type_list =
   let label_decl_list = make_label_decls named_type_list in
@@ -644,11 +653,11 @@ let transform_lowercase_call3 ~config mapper jsx_expr_loc call_expr_loc attrs
 let rec recursively_transform_named_args_for_make expr args newtypes core_type =
   match expr.pexp_desc with
   (* TODO: make this show up with a loc. *)
-  | Pexp_fun {arg_label = Labelled "key" | Optional "key"} ->
+  | Pexp_fun {arg_label = Labelled {txt = "key"} | Optional {txt = "key"}} ->
     Jsx_common.raise_error ~loc:expr.pexp_loc
       "Key cannot be accessed inside of a component. Don't worry - you can \
        always key a component from its parent!"
-  | Pexp_fun {arg_label = Labelled "ref" | Optional "ref"} ->
+  | Pexp_fun {arg_label = Labelled {txt = "ref"} | Optional {txt = "ref"}} ->
     Jsx_common.raise_error ~loc:expr.pexp_loc
       "Ref cannot be passed as a normal prop. Please use `forwardRef` API \
        instead."
@@ -720,7 +729,13 @@ let rec recursively_transform_named_args_for_make expr args newtypes core_type =
         | _ -> None
       in
       (* The ref arguement of forwardRef should be optional *)
-      ( (Optional "ref", None, pattern, txt, pattern.ppat_loc, type_) :: args,
+      ( ( Optional {txt = "ref"; loc = Location.none},
+          None,
+          pattern,
+          txt,
+          pattern.ppat_loc,
+          type_ )
+        :: args,
         newtypes,
         core_type )
     else (args, newtypes, core_type)
@@ -994,12 +1009,12 @@ let map_binding ~config ~empty_loc ~pstr_loc ~file_name ~rec_flag binding =
       (* let make = React.forwardRef({
            let \"App" = (props, ref) => make({...props, ref: @optional (Js.Nullabel.toOption(ref))})
          })*)
-      Exp.fun_ ~arity:None nolabel None
+      Exp.fun_ ~arity:None Nolabel None
         (match core_type_of_attr with
         | None -> make_props_pattern named_type_list
         | Some _ -> make_props_pattern typ_vars_of_core_type)
         (if has_forward_ref then
-           Exp.fun_ ~arity:None nolabel None
+           Exp.fun_ ~arity:None Nolabel None
              (Pat.var @@ Location.mknoloc "ref")
              inner_expression
          else inner_expression)

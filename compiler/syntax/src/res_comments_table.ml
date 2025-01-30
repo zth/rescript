@@ -335,7 +335,7 @@ let is_if_then_else_expr expr =
 type node =
   | Case of Parsetree.case
   | CoreType of Parsetree.core_type
-  | ExprArgument of Parsetree.expression
+  | ExprArgument of {expr: Parsetree.expression; loc: Location.t}
   | Expression of Parsetree.expression
   | ExprRecordRow of Longident.t Asttypes.loc * Parsetree.expression
   | ExtensionConstructor of Parsetree.extension_constructor
@@ -365,11 +365,7 @@ let get_loc node =
         | Some ({loc}, _), _ -> loc.Location.loc_end);
     }
   | CoreType ct -> ct.ptyp_loc
-  | ExprArgument expr -> (
-    match expr.Parsetree.pexp_attributes with
-    | ({Location.txt = "res.namedArgLoc"; loc}, _) :: _attrs ->
-      {loc with loc_end = expr.pexp_loc.loc_end}
-    | _ -> expr.pexp_loc)
+  | ExprArgument {loc} -> loc
   | Expression e -> (
     match e.pexp_attributes with
     | ({txt = "res.braces" | "ns.braces"; loc}, _) :: _ -> loc
@@ -558,7 +554,7 @@ and walk_node node tbl comments =
   match node with
   | Case c -> walk_case c tbl comments
   | CoreType ct -> walk_core_type ct tbl comments
-  | ExprArgument ea -> walk_expr_argument ea tbl comments
+  | ExprArgument ea -> walk_expr_argument ea.expr ea.loc tbl comments
   | Expression e -> walk_expression e tbl comments
   | ExprRecordRow (ri, e) -> walk_expr_record_row (ri, e) tbl comments
   | ExtensionConstructor ec -> walk_extension_constructor ec tbl comments
@@ -1407,14 +1403,16 @@ and walk_expression expr t comments =
         arguments
         |> List.filter (fun (label, _) ->
                match label with
-               | Asttypes.Labelled "children" -> false
+               | Asttypes.Labelled {txt = "children"} -> false
                | Asttypes.Nolabel -> false
                | _ -> true)
       in
       let maybe_children =
         arguments
         |> List.find_opt (fun (label, _) ->
-               label = Asttypes.Labelled "children")
+               match label with
+               | Asttypes.Labelled {txt = "children"} -> true
+               | _ -> false)
       in
       match maybe_children with
       (* There is no need to deal with this situation as the children cannot be NONE *)
@@ -1433,26 +1431,45 @@ and walk_expression expr t comments =
           in
           attach t.trailing call_expr.pexp_loc after_expr
         else
-          walk_list (props |> List.map (fun (_, e) -> ExprArgument e)) t leading;
+          walk_list
+            (props
+            |> List.map (fun (lbl, expr) ->
+                   let loc =
+                     match lbl with
+                     | Asttypes.Labelled {loc} | Optional {loc} ->
+                       {loc with loc_end = expr.Parsetree.pexp_loc.loc_end}
+                     | _ -> expr.pexp_loc
+                   in
+                   ExprArgument {expr; loc}))
+            t leading;
         walk_expression children t inside)
     else
       let after_expr, rest =
         partition_adjacent_trailing call_expr.pexp_loc after
       in
       attach t.trailing call_expr.pexp_loc after_expr;
-      walk_list (arguments |> List.map (fun (_, e) -> ExprArgument e)) t rest
+      walk_list
+        (arguments
+        |> List.map (fun (lbl, expr) ->
+               let loc =
+                 match lbl with
+                 | Asttypes.Labelled {loc} | Optional {loc} ->
+                   {loc with loc_end = expr.Parsetree.pexp_loc.loc_end}
+                 | _ -> expr.pexp_loc
+               in
+               ExprArgument {expr; loc}))
+        t rest
   | Pexp_fun _ | Pexp_newtype _ -> (
     let _, parameters, return_expr = fun_expr expr in
     let comments =
       visit_list_but_continue_with_remaining_comments ~newline_delimited:false
-        ~walk_node:walk_expr_pararameter
-        ~get_loc:(fun (_attrs, _argLbl, expr_opt, pattern) ->
+        ~walk_node:walk_expr_parameter
+        ~get_loc:(fun (_attrs, argLbl, expr_opt, pattern) ->
+          let label_loc = Asttypes.get_lbl_loc argLbl in
           let open Parsetree in
           let start_pos =
-            match pattern.ppat_attributes with
-            | ({Location.txt = "res.namedArgLoc"; loc}, _) :: _attrs ->
-              loc.loc_start
-            | _ -> pattern.ppat_loc.loc_start
+            if label_loc <> Location.none then label_loc.loc_start
+            else pattern.ppat_loc.loc_start
           in
           match expr_opt with
           | None -> {pattern.ppat_loc with loc_start = start_pos}
@@ -1493,7 +1510,7 @@ and walk_expression expr t comments =
         attach t.trailing return_expr.pexp_loc trailing)
   | _ -> ()
 
-and walk_expr_pararameter (_attrs, _argLbl, expr_opt, pattern) t comments =
+and walk_expr_parameter (_attrs, _argLbl, expr_opt, pattern) t comments =
   let leading, inside, trailing = partition_by_loc comments pattern.ppat_loc in
   attach t.leading pattern.ppat_loc leading;
   walk_pattern pattern t inside;
@@ -1511,22 +1528,15 @@ and walk_expr_pararameter (_attrs, _argLbl, expr_opt, pattern) t comments =
       attach t.trailing expr.pexp_loc trailing
   | None -> attach t.trailing pattern.ppat_loc trailing
 
-and walk_expr_argument expr t comments =
-  match expr.Parsetree.pexp_attributes with
-  | ({Location.txt = "res.namedArgLoc"; loc}, _) :: _attrs ->
-    let leading, trailing = partition_leading_trailing comments loc in
-    attach t.leading loc leading;
-    let after_label, rest = partition_adjacent_trailing loc trailing in
-    attach t.trailing loc after_label;
-    let before, inside, after = partition_by_loc rest expr.pexp_loc in
-    attach t.leading expr.pexp_loc before;
-    walk_expression expr t inside;
-    attach t.trailing expr.pexp_loc after
-  | _ ->
-    let before, inside, after = partition_by_loc comments expr.pexp_loc in
-    attach t.leading expr.pexp_loc before;
-    walk_expression expr t inside;
-    attach t.trailing expr.pexp_loc after
+and walk_expr_argument expr loc t comments =
+  let leading, trailing = partition_leading_trailing comments loc in
+  attach t.leading loc leading;
+  let after_label, rest = partition_adjacent_trailing loc trailing in
+  attach t.trailing loc after_label;
+  let before, inside, after = partition_by_loc rest expr.pexp_loc in
+  attach t.leading expr.pexp_loc before;
+  walk_expression expr t inside;
+  attach t.trailing expr.pexp_loc after
 
 and walk_case (case : Parsetree.case) t comments =
   let before, inside, after = partition_by_loc comments case.pc_lhs.ppat_loc in
@@ -1935,11 +1945,11 @@ and walk_object_field field t comments =
 
 and walk_type_parameters type_parameters t comments =
   visit_list_but_continue_with_remaining_comments
-    ~get_loc:(fun (_, _, typexpr) ->
-      match typexpr.Parsetree.ptyp_attributes with
-      | ({Location.txt = "res.namedArgLoc"; loc}, _) :: _attrs ->
-        {loc with loc_end = typexpr.ptyp_loc.loc_end}
-      | _ -> typexpr.ptyp_loc)
+    ~get_loc:(fun (_, lbl, typexpr) ->
+      let lbl_loc = Asttypes.get_lbl_loc lbl in
+      if lbl_loc <> Location.none then
+        {lbl_loc with loc_end = typexpr.Parsetree.ptyp_loc.loc_end}
+      else typexpr.ptyp_loc)
     ~walk_node:walk_type_parameter ~newline_delimited:false type_parameters t
     comments
 

@@ -117,22 +117,29 @@ let apply_labels ?(loc = default_loc) ?(attrs = []) fn
       Pexp_apply
         {
           funct = fn;
-          args = Ext_list.map args (fun (l, a) -> (Asttypes.Labelled l, a));
+          args =
+            Ext_list.map args (fun (l, a) ->
+                (Asttypes.Labelled {txt = l; loc = Location.none}, a));
           partial = false;
         };
   }
 
-let label_arrow ?(loc = default_loc) ?(attrs = []) ~arity s arg ret : core_type
-    =
+let label_arrow ?(loc = default_loc) ?(attrs = []) ~arity txt arg ret :
+    core_type =
   {
-    ptyp_desc = Ptyp_arrow {lbl = Labelled s; arg; ret; arity};
+    ptyp_desc =
+      Ptyp_arrow
+        {lbl = Asttypes.Labelled {txt; loc = default_loc}; arg; ret; arity};
     ptyp_loc = loc;
     ptyp_attributes = attrs;
   }
 
-let opt_arrow ?(loc = default_loc) ?(attrs = []) ~arity s arg ret : core_type =
+let opt_arrow ?(loc = default_loc) ?(attrs = []) ~arity txt arg ret : core_type
+    =
   {
-    ptyp_desc = Ptyp_arrow {lbl = Asttypes.Optional s; arg; ret; arity};
+    ptyp_desc =
+      Ptyp_arrow
+        {lbl = Asttypes.Optional {txt; loc = default_loc}; arg; ret; arity};
     ptyp_loc = loc;
     ptyp_attributes = attrs;
   }

@@ -111,11 +111,11 @@ module SexpAst = struct
     | Contravariant -> Sexp.atom "Contravariant"
     | Invariant -> Sexp.atom "Invariant"
 
-  let arg_label lbl =
+  let arg_label_loc lbl =
     match lbl with
     | Asttypes.Nolabel -> Sexp.atom "Nolabel"
-    | Labelled txt -> Sexp.list [Sexp.atom "Labelled"; string txt]
-    | Optional txt -> Sexp.list [Sexp.atom "Optional"; string txt]
+    | Labelled {txt} -> Sexp.list [Sexp.atom "Labelled"; string txt]
+    | Optional {txt} -> Sexp.list [Sexp.atom "Optional"; string txt]
 
   let constant c =
     let sexpr =
@@ -559,7 +559,7 @@ module SexpAst = struct
         Sexp.list
           [
             Sexp.atom "Pexp_fun";
-            arg_label arg_lbl;
+            arg_label_loc arg_lbl;
             (match expr_opt with
             | None -> Sexp.atom "None"
             | Some expr -> Sexp.list [Sexp.atom "Some"; expression expr]);
@@ -574,7 +574,7 @@ module SexpAst = struct
             Sexp.list
               (map_empty
                  ~f:(fun (arg_lbl, expr) ->
-                   Sexp.list [arg_label arg_lbl; expression expr])
+                   Sexp.list [arg_label_loc arg_lbl; expression expr])
                  args);
           ]
       | Pexp_match (expr, cases) ->
@@ -838,7 +838,12 @@ module SexpAst = struct
       | Ptyp_var var -> Sexp.list [Sexp.atom "Ptyp_var"; string var]
       | Ptyp_arrow {lbl; arg; ret} ->
         Sexp.list
-          [Sexp.atom "Ptyp_arrow"; arg_label lbl; core_type arg; core_type ret]
+          [
+            Sexp.atom "Ptyp_arrow";
+            arg_label_loc lbl;
+            core_type arg;
+            core_type ret;
+          ]
       | Ptyp_tuple types ->
         Sexp.list
           [Sexp.atom "Ptyp_tuple"; Sexp.list (map_empty ~f:core_type types)]

@@ -298,7 +298,10 @@ let rec exprToContextPathInner (e : Parsetree.expression) =
   | Pexp_apply {funct = e1; args} -> (
     match exprToContextPath e1 with
     | None -> None
-    | Some contexPath -> Some (CPApply (contexPath, args |> List.map fst)))
+    | Some contexPath ->
+      Some
+        (CPApply (contexPath, args |> List.map fst |> List.map Asttypes.to_noloc))
+    )
   | Pexp_tuple exprs ->
     let exprsAsContextPaths = exprs |> List.filter_map exprToContextPath in
     if List.length exprs = List.length exprsAsContextPaths then
@@ -1446,8 +1449,8 @@ let completionWithParser1 ~currentFile ~debug ~offset ~path ~posCursor
                        (match lbl with
                        | Nolabel ->
                          Unlabelled {argumentPosition = currentUnlabelledCount}
-                       | Optional name -> Optional name
-                       | Labelled name -> Labelled name);
+                       | Optional {txt = name} -> Optional name
+                       | Labelled {txt = name} -> Labelled name);
                    })
           in
           (match defaultExpOpt with

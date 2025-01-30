@@ -471,7 +471,7 @@ let process_obj (loc : Location.t) (st : external_desc) (prim_name : string)
               | _ ->
                 Location.raise_errorf ~loc
                   "expect label, optional, or unit here")
-            | Labelled label -> (
+            | Labelled {txt = label} -> (
               let field_name =
                 match
                   Ast_attributes.iter_process_bs_string_as param_type.attr
@@ -530,7 +530,7 @@ let process_obj (loc : Location.t) (st : external_desc) (prim_name : string)
               | Unwrap ->
                 Location.raise_errorf ~loc
                   "%@obj label %s does not support %@unwrap arguments" label)
-            | Optional label -> (
+            | Optional {txt = label} -> (
               let field_name =
                 match
                   Ast_attributes.iter_process_bs_string_as param_type.attr
@@ -983,7 +983,7 @@ let handle_attributes (loc : Bs_loc.t) (type_annotation : Parsetree.core_type)
                 arg_type,
                 new_arg_types ) =
             match arg_label with
-            | Optional s -> (
+            | Optional {txt = s} -> (
               let arg_type = get_opt_arg_type ~nolabel:false ty in
               match arg_type with
               | Poly_var _ ->

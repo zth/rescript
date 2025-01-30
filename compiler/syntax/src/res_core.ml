@@ -1647,21 +1647,18 @@ and parse_parameter p =
       let lidents = parse_lident_list p in
       Some (TypeParameter {attrs; locs = lidents; p_pos = start_pos}))
     else
-      let attrs, lbl, pat =
+      let attrs, lbl, lbl_loc, pat =
         match p.Parser.token with
         | Tilde -> (
           Parser.next p;
-          let lbl_name, loc = parse_lident p in
-          let prop_loc_attr =
-            (Location.mkloc "res.namedArgLoc" loc, Parsetree.PStr [])
-          in
+          let lbl_name, lbl_loc = parse_lident p in
           match p.Parser.token with
           | Comma | Equal | Rparen ->
             let loc = mk_loc start_pos p.prev_end_pos in
             ( [],
-              Asttypes.Labelled lbl_name,
-              Ast_helper.Pat.var ~attrs:(prop_loc_attr :: attrs) ~loc
-                (Location.mkloc lbl_name loc) )
+              Asttypes.Labelled {txt = lbl_name; loc = lbl_loc},
+              lbl_loc,
+              Ast_helper.Pat.var ~attrs ~loc (Location.mkloc lbl_name loc) )
           | Colon ->
             let lbl_end = p.prev_end_pos in
             Parser.next p;
@@ -1670,31 +1667,30 @@ and parse_parameter p =
             let pat =
               let pat = Ast_helper.Pat.var ~loc (Location.mkloc lbl_name loc) in
               let loc = mk_loc start_pos p.prev_end_pos in
-              Ast_helper.Pat.constraint_ ~attrs:(prop_loc_attr :: attrs) ~loc
-                pat typ
+              Ast_helper.Pat.constraint_ ~attrs ~loc pat typ
             in
-            ([], Asttypes.Labelled lbl_name, pat)
+            ([], Asttypes.Labelled {txt = lbl_name; loc = lbl_loc}, lbl_loc, pat)
           | As ->
             Parser.next p;
             let pat =
               let pat = parse_constrained_pattern p in
-              {
-                pat with
-                ppat_attributes = (prop_loc_attr :: attrs) @ pat.ppat_attributes;
-              }
+              {pat with ppat_attributes = attrs @ pat.ppat_attributes}
             in
-            ([], Asttypes.Labelled lbl_name, pat)
+            ([], Asttypes.Labelled {txt = lbl_name; loc = lbl_loc}, lbl_loc, pat)
           | t ->
             Parser.err p (Diagnostics.unexpected t p.breadcrumbs);
             let loc = mk_loc start_pos p.prev_end_pos in
             ( [],
-              Asttypes.Labelled lbl_name,
-              Ast_helper.Pat.var ~attrs:(prop_loc_attr :: attrs) ~loc
-                (Location.mkloc lbl_name loc) ))
+              Asttypes.Labelled {txt = lbl_name; loc = lbl_loc},
+              lbl_loc,
+              Ast_helper.Pat.var ~attrs ~loc (Location.mkloc lbl_name loc) ))
         | _ ->
           let pattern = parse_constrained_pattern p in
           let attrs = List.concat [pattern.ppat_attributes; attrs] in
-          ([], Asttypes.Nolabel, {pattern with ppat_attributes = attrs})
+          ( [],
+            Asttypes.Nolabel,
+            Location.none,
+            {pattern with ppat_attributes = attrs} )
       in
       match p.Parser.token with
       | Equal -> (
@@ -1711,7 +1707,7 @@ and parse_parameter p =
             Parser.err ~start_pos ~end_pos:p.prev_end_pos p
               (Diagnostics.message
                  (ErrorMessages.missing_tilde_labeled_parameter lbl_name));
-            Asttypes.Optional lbl_name
+            Asttypes.Optional {txt = lbl_name; loc = lbl_loc}
           | lbl -> lbl
         in
         match p.Parser.token with
@@ -2677,7 +2673,7 @@ and parse_jsx_opening_or_self_closing_element ~start_pos p =
        [
          jsx_props;
          [
-           (Asttypes.Labelled "children", children);
+           (Asttypes.Labelled {txt = "children"; loc = Location.none}, children);
            ( Asttypes.Nolabel,
              Ast_helper.Exp.construct
                (Location.mknoloc (Longident.Lident "()"))
@@ -2740,15 +2736,12 @@ and parse_jsx_prop p =
   | Question | Lident _ -> (
     let optional = Parser.optional p Question in
     let name, loc = parse_lident p in
-    let prop_loc_attr =
-      (Location.mkloc "res.namedArgLoc" loc, Parsetree.PStr [])
-    in
     (* optional punning: <foo ?a /> *)
     if optional then
       Some
-        ( Asttypes.Optional name,
-          Ast_helper.Exp.ident ~attrs:[prop_loc_attr] ~loc
-            (Location.mkloc (Longident.Lident name) loc) )
+        ( Asttypes.Optional {txt = name; loc},
+          Ast_helper.Exp.ident ~loc (Location.mkloc (Longident.Lident name) loc)
+        )
     else
       match p.Parser.token with
       | Equal ->
@@ -2756,21 +2749,19 @@ and parse_jsx_prop p =
         (* no punning *)
         let optional = Parser.optional p Question in
         Scanner.pop_mode p.scanner Jsx;
-        let attr_expr =
-          let e = parse_primary_expr ~operand:(parse_atomic_expr p) p in
-          {e with pexp_attributes = prop_loc_attr :: e.pexp_attributes}
-        in
+        let attr_expr = parse_primary_expr ~operand:(parse_atomic_expr p) p in
         let label =
-          if optional then Asttypes.Optional name else Asttypes.Labelled name
+          if optional then Asttypes.Optional {txt = name; loc}
+          else Asttypes.Labelled {txt = name; loc}
         in
         Some (label, attr_expr)
       | _ ->
         let attr_expr =
-          Ast_helper.Exp.ident ~loc ~attrs:[prop_loc_attr]
-            (Location.mkloc (Longident.Lident name) loc)
+          Ast_helper.Exp.ident ~loc (Location.mkloc (Longident.Lident name) loc)
         in
         let label =
-          if optional then Asttypes.Optional name else Asttypes.Labelled name
+          if optional then Asttypes.Optional {txt = name; loc}
+          else Asttypes.Labelled {txt = name; loc}
         in
         Some (label, attr_expr))
   (* {...props} *)
@@ -2782,15 +2773,9 @@ and parse_jsx_prop p =
       Scanner.pop_mode p.scanner Jsx;
       Parser.next p;
       let loc = mk_loc p.Parser.start_pos p.prev_end_pos in
-      let prop_loc_attr =
-        (Location.mkloc "res.namedArgLoc" loc, Parsetree.PStr [])
-      in
-      let attr_expr =
-        let e = parse_primary_expr ~operand:(parse_expr p) p in
-        {e with pexp_attributes = prop_loc_attr :: e.pexp_attributes}
-      in
+      let attr_expr = parse_primary_expr ~operand:(parse_expr p) p in
       (* using label "spreadProps" to distinguish from others *)
-      let label = Asttypes.Labelled "_spreadProps" in
+      let label = Asttypes.Labelled {txt = "_spreadProps"; loc} in
       match p.Parser.token with
       | Rbrace ->
         Parser.next p;
@@ -3006,7 +2991,7 @@ and parse_braced_or_record_expr p =
               [
                 {
                   attrs = [];
-                  p_label = Asttypes.Nolabel;
+                  p_label = Nolabel;
                   expr = None;
                   pat = Ast_helper.Pat.var ~loc:ident.loc ident;
                   p_pos = start_pos;
@@ -3623,25 +3608,26 @@ and parse_argument2 p : argument option =
       Parser.next p;
       let end_pos = p.prev_end_pos in
       let loc = mk_loc start_pos end_pos in
-      let prop_loc_attr =
-        (Location.mkloc "res.namedArgLoc" loc, Parsetree.PStr [])
-      in
+      let named_arg_loc = loc in
       let ident_expr =
-        Ast_helper.Exp.ident ~attrs:[prop_loc_attr] ~loc
-          (Location.mkloc (Longident.Lident ident) loc)
+        Ast_helper.Exp.ident ~loc (Location.mkloc (Longident.Lident ident) loc)
       in
       match p.Parser.token with
       | Question ->
         Parser.next p;
-        Some {label = Optional ident; expr = ident_expr}
+        Some
+          {
+            label = Optional {txt = ident; loc = named_arg_loc};
+            expr = ident_expr;
+          }
       | Equal ->
         Parser.next p;
         let label =
           match p.Parser.token with
           | Question ->
             Parser.next p;
-            Asttypes.Optional ident
-          | _ -> Labelled ident
+            Asttypes.Optional {txt = ident; loc = named_arg_loc}
+          | _ -> Asttypes.Labelled {txt = ident; loc = named_arg_loc}
         in
         let expr =
           match p.Parser.token with
@@ -3650,20 +3636,22 @@ and parse_argument2 p : argument option =
             Parser.next p;
             Ast_helper.Exp.ident ~loc
               (Location.mkloc (Longident.Lident "_") loc)
-          | _ ->
-            let expr = parse_constrained_or_coerced_expr p in
-            {expr with pexp_attributes = prop_loc_attr :: expr.pexp_attributes}
+          | _ -> parse_constrained_or_coerced_expr p
         in
         Some {label; expr}
       | Colon ->
         Parser.next p;
         let typ = parse_typ_expr p in
         let loc = mk_loc start_pos p.prev_end_pos in
-        let expr =
-          Ast_helper.Exp.constraint_ ~attrs:[prop_loc_attr] ~loc ident_expr typ
-        in
-        Some {label = Labelled ident; expr}
-      | _ -> Some {label = Labelled ident; expr = ident_expr})
+        let expr = Ast_helper.Exp.constraint_ ~loc ident_expr typ in
+        Some
+          {label = Asttypes.Labelled {txt = ident; loc = named_arg_loc}; expr}
+      | _ ->
+        Some
+          {
+            label = Asttypes.Labelled {txt = ident; loc = named_arg_loc};
+            expr = ident_expr;
+          })
     | t ->
       Parser.err p (Diagnostics.lident t);
       Some {label = Nolabel; expr = Recover.default_expr ()})
@@ -3979,7 +3967,7 @@ and parse_array_exp p =
             (Longident.Ldot
                (Longident.Ldot (Longident.Lident "Belt", "Array"), "concatMany"))
             loc))
-      [(Asttypes.Nolabel, Ast_helper.Exp.array ~loc list_exprs)]
+      [(Nolabel, Ast_helper.Exp.array ~loc list_exprs)]
 
 (* TODO: check attributes in the case of poly type vars,
  * might be context dependend: parseFieldDeclaration (see ocaml) *)
@@ -4006,8 +3994,7 @@ and parse_poly_type_expr p =
         let typ = Ast_helper.Typ.var ~loc:var.loc var.txt in
         let return_type = parse_typ_expr ~alias:false p in
         let loc = mk_loc typ.Parsetree.ptyp_loc.loc_start p.prev_end_pos in
-        Ast_helper.Typ.arrow ~loc ~arity:(Some 1) Asttypes.Nolabel typ
-          return_type
+        Ast_helper.Typ.arrow ~loc ~arity:(Some 1) Nolabel typ return_type
       | _ -> Ast_helper.Typ.var ~loc:var.loc var.txt)
     | _ -> assert false)
   | _ -> parse_typ_expr p
@@ -4233,20 +4220,14 @@ and parse_type_parameter p =
     | Tilde -> (
       Parser.next p;
       let name, loc = parse_lident p in
-      let lbl_loc_attr =
-        (Location.mkloc "res.namedArgLoc" loc, Parsetree.PStr [])
-      in
       Parser.expect ~grammar:Grammar.TypeExpression Colon p;
-      let typ =
-        let typ = parse_typ_expr p in
-        {typ with ptyp_attributes = lbl_loc_attr :: typ.ptyp_attributes}
-      in
+      let typ = parse_typ_expr p in
       match p.Parser.token with
       | Equal ->
         Parser.next p;
         Parser.expect Question p;
-        Some {attrs; label = Optional name; typ; start_pos}
-      | _ -> Some {attrs; label = Labelled name; typ; start_pos})
+        Some {attrs; label = Optional {txt = name; loc}; typ; start_pos}
+      | _ -> Some {attrs; label = Labelled {txt = name; loc}; typ; start_pos})
     | Lident _ -> (
       let name, loc = parse_lident p in
       match p.token with
@@ -4264,8 +4245,8 @@ and parse_type_parameter p =
         | Equal ->
           Parser.next p;
           Parser.expect Question p;
-          Some {attrs; label = Optional name; typ; start_pos}
-        | _ -> Some {attrs; label = Labelled name; typ; start_pos})
+          Some {attrs; label = Optional {txt = name; loc}; typ; start_pos}
+        | _ -> Some {attrs; label = Labelled {txt = name; loc}; typ; start_pos})
       | _ ->
         let constr = Location.mkloc (Longident.Lident name) loc in
         let args = parse_type_constructor_args ~constr_name:constr p in
@@ -4310,22 +4291,16 @@ and parse_es6_arrow_type ~attrs p =
   match p.Parser.token with
   | Tilde ->
     Parser.next p;
-    let name, loc = parse_lident p in
-    let lbl_loc_attr =
-      (Location.mkloc "res.namedArgLoc" loc, Parsetree.PStr [])
-    in
+    let name, label_loc = parse_lident p in
     Parser.expect ~grammar:Grammar.TypeExpression Colon p;
-    let typ =
-      let typ = parse_typ_expr ~alias:false ~es6_arrow:false p in
-      {typ with ptyp_attributes = lbl_loc_attr :: typ.ptyp_attributes}
-    in
+    let typ = parse_typ_expr ~alias:false ~es6_arrow:false p in
     let arg =
       match p.Parser.token with
       | Equal ->
         Parser.next p;
         Parser.expect Question p;
-        Asttypes.Optional name
-      | _ -> Asttypes.Labelled name
+        Asttypes.Optional {txt = name; loc = label_loc}
+      | _ -> Asttypes.Labelled {txt = name; loc = label_loc}
     in
     Parser.expect EqualGreater p;
     let return_type = parse_typ_expr ~alias:false p in
@@ -4419,7 +4394,7 @@ and parse_arrow_type_rest ~es6_arrow ~start_pos typ p =
     Parser.next p;
     let return_type = parse_typ_expr ~alias:false p in
     let loc = mk_loc start_pos p.prev_end_pos in
-    Ast_helper.Typ.arrow ~loc ~arity:(Some 1) Asttypes.Nolabel typ return_type
+    Ast_helper.Typ.arrow ~loc ~arity:(Some 1) Nolabel typ return_type
   | _ -> typ
 
 and parse_typ_expr_region p =
@@ -5026,8 +5001,7 @@ and parse_type_equation_or_constr_decl p =
         let return_type = parse_typ_expr ~alias:false p in
         let loc = mk_loc uident_start_pos p.prev_end_pos in
         let arrow_type =
-          Ast_helper.Typ.arrow ~loc ~arity:(Some 1) Asttypes.Nolabel typ
-            return_type
+          Ast_helper.Typ.arrow ~loc ~arity:(Some 1) Nolabel typ return_type
         in
         let typ = parse_type_alias p arrow_type in
         (Some typ, Asttypes.Public, Parsetree.Ptype_abstract)

@@ -196,10 +196,9 @@ let filter_parsing_attrs attrs =
       match attr with
       | ( {
             Location.txt =
-              ( "res.braces" | "ns.braces" | "res.iflet" | "res.namedArgLoc"
-              | "res.ternary" | "res.await" | "res.template"
-              | "res.taggedTemplate" | "res.patVariantSpread"
-              | "res.dictPattern" );
+              ( "res.braces" | "ns.braces" | "res.iflet" | "res.ternary"
+              | "res.await" | "res.template" | "res.taggedTemplate"
+              | "res.patVariantSpread" | "res.dictPattern" );
           },
           _ ) ->
         false
@@ -455,7 +454,7 @@ let collect_ternary_parts expr =
 
 let parameters_should_hug parameters =
   match parameters with
-  | [Parameter {attrs = []; lbl = Asttypes.Nolabel; default_expr = None; pat}]
+  | [Parameter {attrs = []; lbl = Nolabel; default_expr = None; pat}]
     when is_huggable_pattern pat ->
     true
   | _ -> false

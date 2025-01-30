@@ -110,10 +110,11 @@ let option i f ppf x =
 let longident_loc i ppf li = line i ppf "%a\n" fmt_longident_loc li
 let string i ppf s = line i ppf "\"%s\"\n" s
 let string_loc i ppf s = line i ppf "%a\n" fmt_string_loc s
-let arg_label i ppf = function
+
+let arg_label_loc i ppf = function
   | Nolabel -> line i ppf "Nolabel\n"
-  | Optional s -> line i ppf "Optional \"%s\"\n" s
-  | Labelled s -> line i ppf "Labelled \"%s\"\n" s
+  | Optional {txt = s} -> line i ppf "Optional \"%s\"\n" s
+  | Labelled {txt = s} -> line i ppf "Labelled \"%s\"\n" s
 
 let rec core_type i ppf x =
   line i ppf "core_type %a\n" fmt_location x.ptyp_loc;
@@ -129,7 +130,7 @@ let rec core_type i ppf x =
       | None -> ()
       | Some n -> line i ppf "arity = %d\n" n
     in
-    arg_label i ppf lbl;
+    arg_label_loc i ppf lbl;
     core_type i ppf arg;
     core_type i ppf ret
   | Ptyp_tuple l ->
@@ -246,7 +247,7 @@ and expression i ppf x =
       | None -> ()
       | Some arity -> line i ppf "arity:%d\n" arity
     in
-    arg_label i ppf l;
+    arg_label_loc i ppf l;
     option i expression ppf eo;
     pattern i ppf p;
     expression i ppf e
@@ -657,7 +658,7 @@ and longident_x_expression i ppf (li, e, opt) =
 
 and label_x_expression i ppf (l, e) =
   line i ppf "<arg>\n";
-  arg_label i ppf l;
+  arg_label_loc i ppf l;
   expression (i + 1) ppf e
 
 and label_x_bool_x_core_type_list i ppf x =

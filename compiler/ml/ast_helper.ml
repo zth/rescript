@@ -82,8 +82,8 @@ module Typ = struct
         | Ptyp_var x ->
           check_variable var_names t.ptyp_loc x;
           Ptyp_var x
-        | Ptyp_arrow {lbl = label; arg; ret; arity = a} ->
-          Ptyp_arrow {lbl = label; arg = loop arg; ret = loop ret; arity = a}
+        | Ptyp_arrow ({arg; ret} as arr) ->
+          Ptyp_arrow {arr with arg = loop arg; ret = loop ret}
         | Ptyp_tuple lst -> Ptyp_tuple (List.map loop lst)
         | Ptyp_constr ({txt = Longident.Lident s}, []) when List.mem s var_names
           ->

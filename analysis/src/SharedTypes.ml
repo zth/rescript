@@ -4,7 +4,7 @@ let ident l = l |> List.map str |> String.concat "."
 
 type path = string list
 
-type typedFnArg = Asttypes.arg_label * Types.type_expr
+type typedFnArg = Asttypes.Noloc.arg_label * Types.type_expr
 
 let pathToString (path : path) = path |> String.concat "."
 
@@ -605,7 +605,7 @@ module Completable = struct
     | CPFloat
     | CPBool
     | CPOption of contextPath
-    | CPApply of contextPath * Asttypes.arg_label list
+    | CPApply of contextPath * Asttypes.Noloc.arg_label list
     | CPId of {
         path: string list;
         completionContext: completionContext;
@@ -692,7 +692,7 @@ module Completable = struct
       contextPathToString cp ^ "("
       ^ (labels
         |> List.map (function
-             | Asttypes.Nolabel -> "Nolabel"
+             | Asttypes.Noloc.Nolabel -> "Nolabel"
              | Labelled s -> "~" ^ s
              | Optional s -> "?" ^ s)
         |> String.concat ", ")
@@ -898,14 +898,12 @@ type arg = {label: label; exp: Parsetree.expression}
 let extractExpApplyArgs ~args =
   let rec processArgs ~acc args =
     match args with
-    | (((Asttypes.Labelled s | Optional s) as label), (e : Parsetree.expression))
+    | ( ((Asttypes.Labelled {txt = s; loc} | Optional {txt = s; loc}) as label),
+        (e : Parsetree.expression) )
       :: rest -> (
-      let namedArgLoc =
-        e.pexp_attributes
-        |> List.find_opt (fun ({Asttypes.txt}, _) -> txt = "res.namedArgLoc")
-      in
+      let namedArgLoc = if loc = Location.none then None else Some loc in
       match namedArgLoc with
-      | Some ({loc}, _) ->
+      | Some loc ->
         let labelled =
           {
             name = s;
@@ -919,7 +917,7 @@ let extractExpApplyArgs ~args =
         in
         processArgs ~acc:({label = Some labelled; exp = e} :: acc) rest
       | None -> processArgs ~acc rest)
-    | (Asttypes.Nolabel, (e : Parsetree.expression)) :: rest ->
+    | (Nolabel, (e : Parsetree.expression)) :: rest ->
       if e.pexp_loc.loc_ghost then processArgs ~acc rest
       else processArgs ~acc:({label = None; exp = e} :: acc) rest
     | [] -> List.rev acc

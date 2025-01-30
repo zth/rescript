@@ -1937,23 +1937,17 @@ and print_type_parameter ~state (attrs, lbl, typ) cmt_tbl =
   let label =
     match lbl with
     | Asttypes.Nolabel -> Doc.nil
-    | Labelled lbl ->
+    | Labelled {txt = lbl} ->
       Doc.concat [Doc.text "~"; print_ident_like lbl; Doc.text ": "]
-    | Optional lbl ->
+    | Optional {txt = lbl} ->
       Doc.concat [Doc.text "~"; print_ident_like lbl; Doc.text ": "]
   in
   let optional_indicator =
     match lbl with
-    | Asttypes.Nolabel | Labelled _ -> Doc.nil
-    | Optional _lbl -> Doc.text "=?"
+    | Nolabel | Labelled _ -> Doc.nil
+    | Optional _ -> Doc.text "=?"
   in
-  let loc, typ =
-    match typ.ptyp_attributes with
-    | ({Location.txt = "res.namedArgLoc"; loc}, _) :: attrs ->
-      ( {loc with loc_end = typ.ptyp_loc.loc_end},
-        {typ with ptyp_attributes = attrs} )
-    | _ -> (typ.ptyp_loc, typ)
-  in
+  let loc = {(Asttypes.get_lbl_loc lbl) with loc_end = typ.ptyp_loc.loc_end} in
   let doc =
     Doc.group
       (Doc.concat
@@ -4257,7 +4251,7 @@ and print_pexp_apply ~state expr cmt_tbl =
     let args =
       if partial then
         let dummy = Ast_helper.Exp.constant ~attrs (Ast_helper.Const.int 0) in
-        args @ [(Asttypes.Labelled "...", dummy)]
+        args @ [(Asttypes.Labelled {txt = "..."; loc = Location.none}, dummy)]
       else args
     in
     let call_expr_doc =
@@ -4509,7 +4503,7 @@ and print_jsx_props ~state args cmt_tbl : Doc.t * Parsetree.expression option =
     match args with
     | [] -> (Doc.nil, None)
     | [
-     (Asttypes.Labelled "children", children);
+     (Asttypes.Labelled {txt = "children"}, children);
      ( Asttypes.Nolabel,
        {
          Parsetree.pexp_desc =
@@ -4518,9 +4512,9 @@ and print_jsx_props ~state args cmt_tbl : Doc.t * Parsetree.expression option =
     ] ->
       let doc = if is_self_closing children then Doc.line else Doc.nil in
       (doc, Some children)
-    | ((_, expr) as last_prop)
+    | ((e_lbl, expr) as last_prop)
       :: [
-           (Asttypes.Labelled "children", children);
+           (Asttypes.Labelled {txt = "children"}, children);
            ( Asttypes.Nolabel,
              {
                Parsetree.pexp_desc =
@@ -4528,10 +4522,10 @@ and print_jsx_props ~state args cmt_tbl : Doc.t * Parsetree.expression option =
              } );
          ] ->
       let loc =
-        match expr.Parsetree.pexp_attributes with
-        | ({Location.txt = "res.namedArgLoc"; loc}, _) :: _attrs ->
+        match e_lbl with
+        | Asttypes.Labelled {loc} | Asttypes.Optional {loc} ->
           {loc with loc_end = expr.pexp_loc.loc_end}
-        | _ -> expr.pexp_loc
+        | Nolabel -> expr.pexp_loc
       in
       let trailing_comments_present = has_trailing_comments cmt_tbl loc in
       let prop_doc = print_jsx_prop ~state last_prop cmt_tbl in
@@ -4562,20 +4556,19 @@ and print_jsx_props ~state args cmt_tbl : Doc.t * Parsetree.expression option =
 
 and print_jsx_prop ~state arg cmt_tbl =
   match arg with
-  | ( ((Asttypes.Labelled lbl_txt | Optional lbl_txt) as lbl),
+  | ( ((Asttypes.Labelled {txt = lbl_txt} | Optional {txt = lbl_txt}) as lbl),
       {
-        Parsetree.pexp_attributes =
-          [({Location.txt = "res.namedArgLoc"; loc = arg_loc}, _)];
+        pexp_attributes = [];
         pexp_desc = Pexp_ident {txt = Longident.Lident ident};
       } )
     when lbl_txt = ident (* jsx punning *) -> (
     match lbl with
     | Nolabel -> Doc.nil
-    | Labelled _lbl -> print_comments (print_ident_like ident) cmt_tbl arg_loc
-    | Optional _lbl ->
+    | Labelled {loc} -> print_comments (print_ident_like ident) cmt_tbl loc
+    | Optional {loc} ->
       let doc = Doc.concat [Doc.question; print_ident_like ident] in
-      print_comments doc cmt_tbl arg_loc)
-  | ( ((Asttypes.Labelled lbl_txt | Optional lbl_txt) as lbl),
+      print_comments doc cmt_tbl loc)
+  | ( ((Asttypes.Labelled {txt = lbl_txt} | Optional {txt = lbl_txt}) as lbl),
       {
         Parsetree.pexp_attributes = [];
         pexp_desc = Pexp_ident {txt = Longident.Lident ident};
@@ -4585,25 +4578,19 @@ and print_jsx_prop ~state arg cmt_tbl =
     | Nolabel -> Doc.nil
     | Labelled _lbl -> print_ident_like ident
     | Optional _lbl -> Doc.concat [Doc.question; print_ident_like ident])
-  | Asttypes.Labelled "_spreadProps", expr ->
+  | Asttypes.Labelled {txt = "_spreadProps"}, expr ->
     let doc = print_expression_with_comments ~state expr cmt_tbl in
     Doc.concat [Doc.lbrace; Doc.dotdotdot; doc; Doc.rbrace]
   | lbl, expr ->
-    let arg_loc, expr =
-      match expr.pexp_attributes with
-      | ({Location.txt = "res.namedArgLoc"; loc}, _) :: attrs ->
-        (loc, {expr with pexp_attributes = attrs})
-      | _ -> (Location.none, expr)
-    in
-    let lbl_doc =
+    let arg_loc, lbl_doc =
       match lbl with
-      | Asttypes.Labelled lbl ->
-        let lbl = print_comments (print_ident_like lbl) cmt_tbl arg_loc in
-        Doc.concat [lbl; Doc.equal]
-      | Asttypes.Optional lbl ->
-        let lbl = print_comments (print_ident_like lbl) cmt_tbl arg_loc in
-        Doc.concat [lbl; Doc.equal; Doc.question]
-      | Nolabel -> Doc.nil
+      | Asttypes.Labelled {txt = lbl; loc} ->
+        let lbl = print_comments (print_ident_like lbl) cmt_tbl loc in
+        (loc, Doc.concat [lbl; Doc.equal])
+      | Asttypes.Optional {txt = lbl; loc} ->
+        let lbl = print_comments (print_ident_like lbl) cmt_tbl loc in
+        (loc, Doc.concat [lbl; Doc.equal; Doc.question])
+      | Nolabel -> (Location.none, Doc.nil)
     in
     let expr_doc =
       let leading_line_comment_present =
@@ -4654,9 +4641,9 @@ and print_arguments_with_callback_in_first_position ~state ~partial args cmt_tbl
       let lbl_doc =
         match lbl with
         | Asttypes.Nolabel -> Doc.nil
-        | Asttypes.Labelled txt ->
+        | Asttypes.Labelled {txt} ->
           Doc.concat [Doc.tilde; print_ident_like txt; Doc.equal]
-        | Asttypes.Optional txt ->
+        | Asttypes.Optional {txt} ->
           Doc.concat [Doc.tilde; print_ident_like txt; Doc.equal; Doc.question]
       in
       let callback =
@@ -4742,9 +4729,9 @@ and print_arguments_with_callback_in_last_position ~state ~partial args cmt_tbl
       let lbl_doc =
         match lbl with
         | Asttypes.Nolabel -> Doc.nil
-        | Asttypes.Labelled txt ->
+        | Asttypes.Labelled {txt} ->
           Doc.concat [Doc.tilde; print_ident_like txt; Doc.equal]
-        | Asttypes.Optional txt ->
+        | Asttypes.Optional {txt} ->
           Doc.concat [Doc.tilde; print_ident_like txt; Doc.equal; Doc.question]
       in
       let callback_fits_on_one_line =
@@ -4897,37 +4884,26 @@ and print_arguments ~state ~partial
 and print_argument ~state (arg_lbl, arg) cmt_tbl =
   match (arg_lbl, arg) with
   (* ~a (punned)*)
-  | ( Labelled lbl,
-      ({
-         pexp_desc = Pexp_ident {txt = Longident.Lident name};
-         pexp_attributes = [] | [({Location.txt = "res.namedArgLoc"}, _)];
-       } as arg_expr) )
-    when lbl = name && not (ParsetreeViewer.is_braced_expr arg_expr) ->
-    let loc =
-      match arg.pexp_attributes with
-      | ({Location.txt = "res.namedArgLoc"; loc}, _) :: _ -> loc
-      | _ -> arg.pexp_loc
-    in
+  | ( Labelled {txt = lbl; loc = l0},
+      {
+        pexp_attributes = [];
+        pexp_desc = Pexp_ident {txt = Longident.Lident name};
+      } )
+    when lbl = name && not (ParsetreeViewer.is_braced_expr arg) ->
+    let loc = {l0 with loc_end = arg.pexp_loc.loc_end} in
     let doc = Doc.concat [Doc.tilde; print_ident_like lbl] in
     print_comments doc cmt_tbl loc
   (* ~a: int (punned)*)
-  | ( Labelled lbl,
+  | ( Labelled {txt = lbl; loc = l0},
       {
         pexp_desc =
           Pexp_constraint
             ( ({pexp_desc = Pexp_ident {txt = Longident.Lident name}} as arg_expr),
               typ );
-        pexp_loc;
-        pexp_attributes =
-          ([] | [({Location.txt = "res.namedArgLoc"}, _)]) as attrs;
+        pexp_attributes = [];
       } )
     when lbl = name && not (ParsetreeViewer.is_braced_expr arg_expr) ->
-    let loc =
-      match attrs with
-      | ({Location.txt = "res.namedArgLoc"; loc}, _) :: _ ->
-        {loc with loc_end = pexp_loc.loc_end}
-      | _ -> arg.pexp_loc
-    in
+    let loc = {l0 with loc_end = arg.pexp_loc.loc_end} in
     let doc =
       Doc.concat
         [
@@ -4939,40 +4915,32 @@ and print_argument ~state (arg_lbl, arg) cmt_tbl =
     in
     print_comments doc cmt_tbl loc
   (* ~a? (optional lbl punned)*)
-  | ( Optional lbl,
+  | ( Optional {txt = lbl; loc},
       {
         pexp_desc = Pexp_ident {txt = Longident.Lident name};
-        pexp_attributes = [] | [({Location.txt = "res.namedArgLoc"}, _)];
+        pexp_attributes = [];
       } )
     when lbl = name ->
-    let loc =
-      match arg.pexp_attributes with
-      | ({Location.txt = "res.namedArgLoc"; loc}, _) :: _ -> loc
-      | _ -> arg.pexp_loc
-    in
     let doc = Doc.concat [Doc.tilde; print_ident_like lbl; Doc.question] in
     print_comments doc cmt_tbl loc
   | _lbl, expr ->
-    let arg_loc, expr =
-      match expr.pexp_attributes with
-      | ({Location.txt = "res.namedArgLoc"; loc}, _) :: attrs ->
-        (loc, {expr with pexp_attributes = attrs})
-      | _ -> (expr.pexp_loc, expr)
-    in
-    let printed_lbl, dotdotdot =
+    let arg_loc, printed_lbl, dotdotdot =
       match arg_lbl with
-      | Nolabel -> (Doc.nil, false)
-      | Labelled "..." ->
+      | Nolabel -> (expr.pexp_loc, Doc.nil, false)
+      | Labelled {txt = "..."; loc} ->
+        let arg_loc = loc in
         let doc = Doc.text "..." in
-        (print_comments doc cmt_tbl arg_loc, true)
-      | Labelled lbl ->
+        (loc, print_comments doc cmt_tbl arg_loc, true)
+      | Labelled {txt = lbl; loc} ->
+        let arg_loc = loc in
         let doc = Doc.concat [Doc.tilde; print_ident_like lbl; Doc.equal] in
-        (print_comments doc cmt_tbl arg_loc, false)
-      | Optional lbl ->
+        (loc, print_comments doc cmt_tbl arg_loc, false)
+      | Optional {txt = lbl; loc} ->
+        let arg_loc = loc in
         let doc =
           Doc.concat [Doc.tilde; print_ident_like lbl; Doc.equal; Doc.question]
         in
-        (print_comments doc cmt_tbl arg_loc, false)
+        (loc, print_comments doc cmt_tbl arg_loc, false)
     in
     let printed_expr =
       let doc = print_expression_with_comments ~state expr cmt_tbl in
@@ -5077,7 +5045,7 @@ and print_expr_fun_parameters ~state ~in_callback ~async ~has_constraint
    ParsetreeViewer.Parameter
      {
        attrs = [];
-       lbl = Asttypes.Nolabel;
+       lbl = Nolabel;
        default_expr = None;
        pat = {Parsetree.ppat_desc = Ppat_any; ppat_loc};
      };
@@ -5092,7 +5060,7 @@ and print_expr_fun_parameters ~state ~in_callback ~async ~has_constraint
    ParsetreeViewer.Parameter
      {
        attrs = [];
-       lbl = Asttypes.Nolabel;
+       lbl = Nolabel;
        default_expr = None;
        pat =
          {
@@ -5118,7 +5086,7 @@ and print_expr_fun_parameters ~state ~in_callback ~async ~has_constraint
    ParsetreeViewer.Parameter
      {
        attrs = [];
-       lbl = Asttypes.Nolabel;
+       lbl = Nolabel;
        default_expr = None;
        pat =
          {ppat_desc = Ppat_construct ({txt = Longident.Lident "()"; loc}, None)};
@@ -5198,8 +5166,8 @@ and print_exp_fun_parameter ~state parameter cmt_tbl =
      * ~from                   ->  punning *)
     let label_with_pattern =
       match (lbl, pattern) with
-      | Asttypes.Nolabel, pattern -> print_pattern ~state pattern cmt_tbl
-      | ( (Asttypes.Labelled lbl | Optional lbl),
+      | Nolabel, pattern -> print_pattern ~state pattern cmt_tbl
+      | ( (Labelled {txt = lbl} | Optional {txt = lbl}),
           {ppat_desc = Ppat_var string_loc; ppat_attributes} )
         when lbl = string_loc.txt ->
         (* ~d *)
@@ -5209,7 +5177,7 @@ and print_exp_fun_parameter ~state parameter cmt_tbl =
             Doc.text "~";
             print_ident_like lbl;
           ]
-      | ( (Asttypes.Labelled lbl | Optional lbl),
+      | ( (Labelled {txt = lbl} | Optional {txt = lbl}),
           {
             ppat_desc = Ppat_constraint ({ppat_desc = Ppat_var {txt}}, typ);
             ppat_attributes;
@@ -5224,7 +5192,7 @@ and print_exp_fun_parameter ~state parameter cmt_tbl =
             Doc.text ": ";
             print_typ_expr ~state typ cmt_tbl;
           ]
-      | (Asttypes.Labelled lbl | Optional lbl), pattern ->
+      | (Labelled {txt = lbl} | Optional {txt = lbl}), pattern ->
         (* ~b as c *)
         Doc.concat
           [
@@ -5236,7 +5204,7 @@ and print_exp_fun_parameter ~state parameter cmt_tbl =
     in
     let optional_label_suffix =
       match (lbl, default_expr) with
-      | Asttypes.Optional _, None -> Doc.text "=?"
+      | Optional _, None -> Doc.text "=?"
       | _ -> Doc.nil
     in
     let doc =
@@ -5244,24 +5212,11 @@ and print_exp_fun_parameter ~state parameter cmt_tbl =
         (Doc.concat
            [attrs; label_with_pattern; default_expr_doc; optional_label_suffix])
     in
+    let lbl_loc = Asttypes.get_lbl_loc lbl in
     let cmt_loc =
       match default_expr with
-      | None -> (
-        match pattern.ppat_attributes with
-        | ({Location.txt = "res.namedArgLoc"; loc}, _) :: _ ->
-          {loc with loc_end = pattern.ppat_loc.loc_end}
-        | _ -> pattern.ppat_loc)
-      | Some expr ->
-        let start_pos =
-          match pattern.ppat_attributes with
-          | ({Location.txt = "res.namedArgLoc"; loc}, _) :: _ -> loc.loc_start
-          | _ -> pattern.ppat_loc.loc_start
-        in
-        {
-          pattern.ppat_loc with
-          loc_start = start_pos;
-          loc_end = expr.pexp_loc.loc_end;
-        }
+      | None -> {lbl_loc with loc_end = pattern.ppat_loc.loc_end}
+      | Some expr -> {lbl_loc with loc_end = expr.pexp_loc.loc_end}
     in
     print_comments doc cmt_tbl cmt_loc
 
