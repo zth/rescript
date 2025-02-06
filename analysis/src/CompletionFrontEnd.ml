@@ -1127,6 +1127,65 @@ let completionWithParser1 ~currentFile ~debug ~offset ~path ~posCursor
       (* Case foo-> when the parser adds a ghost expression to the rhs
          so the apply expression does not include the cursor *)
       if setPipeResult ~lhs ~id:"" then setFound ()
+    (*
+       A dot completion for a tagged templated application with an expr hole.
+       Example:
+         sh`echo "meh"`.
+    *)
+    | Pexp_apply
+        {
+          funct = {pexp_desc = Pexp_ident {txt = Lident "."; loc = _}};
+          args =
+            [
+              (* sh`echo "meh"` *)
+              (_, ({pexp_desc = Pexp_apply _} as innerExpr));
+              (* recovery inserted node *)
+              (_, {pexp_desc = Pexp_extension ({txt = "rescript.exprhole"}, _)});
+            ];
+        }
+      when Res_parsetree_viewer.is_tagged_template_literal innerExpr ->
+      exprToContextPath innerExpr
+      |> Option.iter (fun cpath ->
+             setResult
+               (Cpath
+                  (CPField
+                     {
+                       contextPath = cpath;
+                       fieldName = "";
+                       posOfDot;
+                       exprLoc = expr.pexp_loc;
+                     }));
+             setFound ())
+    (*
+       A dot completion for a tagged templated application with an ident.
+       Example:
+         sh`echo "meh"`.foo
+    *)
+    | Pexp_apply
+        {
+          funct = {pexp_desc = Pexp_ident {txt = Lident "."; loc = _}};
+          args =
+            [
+              (*  sh`echo "meh"` *)
+              (_, ({pexp_desc = Pexp_apply _} as innerExpr));
+              (* foo *)
+              (_, {pexp_desc = Pexp_ident {txt = Lident fieldName}});
+            ];
+        }
+      when Res_parsetree_viewer.is_tagged_template_literal innerExpr
+           && expr.pexp_loc |> Loc.hasPos ~pos:posBeforeCursor ->
+      exprToContextPath innerExpr
+      |> Option.iter (fun cpath ->
+             setResult
+               (Cpath
+                  (CPField
+                     {
+                       contextPath = cpath;
+                       fieldName;
+                       posOfDot;
+                       exprLoc = expr.pexp_loc;
+                     }));
+             setFound ())
     | _ -> (
       if expr.pexp_loc |> Loc.hasPos ~pos:posNoWhite && !result = None then (
         setFound ();
