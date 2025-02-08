@@ -24,6 +24,10 @@
 - Fix completion for application with tagged template. https://github.com/rescript-lang/rescript/pull/7278
 - Fix error message for arity in the presence of optional arguments. https://github.com/rescript-lang/rescript/pull/7284
 
+#### :house: Internal
+
+- Remove ignore in res_scanner.ml . https://github.com/rescript-lang/rescript/pull/7280
+
 # 12.0.0-alpha.8
 
 #### :bug: Bug fix
