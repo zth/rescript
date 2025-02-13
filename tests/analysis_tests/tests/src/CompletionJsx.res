@@ -89,3 +89,7 @@ module Info = {
 
 // <Info _type={#warning} >
 //                        ^com
+
+
+// let _ = <p>{"".s}</p>
+//                 ^com
