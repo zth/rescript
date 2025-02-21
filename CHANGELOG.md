@@ -36,6 +36,7 @@
 - Fix runtime type check for Object in untagged variants when one variant case is `null`. https://github.com/rescript-lang/rescript/pull/7303
 - Fix files that were being truncated when sent to the CDN over FTP. https://github.com/rescript-lang/rescript/pull/7306
 - Fix better editor completion for applications. https://github.com/rescript-lang/rescript/pull/7291
+- Fix @react.componentWithProps no longer works with @directive("'use memo'"). https://github.com/rescript-lang/rescript/pull/7300
 
 #### :house: Internal
 
