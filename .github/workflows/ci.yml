@@ -135,6 +135,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
+          cache: yarn
           node-version-file: .nvmrc
 
       - name: Get artifact dir name
@@ -281,7 +282,7 @@ jobs:
           key: ${{ steps.compiler-build-state-key.outputs.value }}
 
       - name: Install npm packages
-        run: npm ci --ignore-scripts
+        run: yarn install
 
       - name: Copy compiler exes to platform bin dir
         run: node ./scripts/copyExes.js -compiler
@@ -429,10 +430,11 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
+          cache: yarn
           node-version-file: .nvmrc
 
       - name: NPM install
-        run: npm ci --ignore-scripts
+        run: yarn install
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -523,6 +525,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
+          cache: yarn
           node-version-file: .nvmrc
           registry-url: https://registry.npmjs.org # Needed to make auth work for publishing
 
