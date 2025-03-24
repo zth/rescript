@@ -252,7 +252,7 @@ jobs:
             | sed 's/,/-/g' >> "$GITHUB_OUTPUT"
 
       - name: Restore compiler build state
-        if: github.base_ref == 'master'
+        if: github.base_ref == 'master' || github.ref == 'refs/heads/master'
         id: compiler-build-state
         uses: actions/cache/restore@v4
         with:
