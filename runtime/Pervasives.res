@@ -1,27 +1,38 @@
-/**
-   Since [others] depend on this file, its public mli files **should not
-   export types** introduced here, otherwise it would cause 
-   conflicts here.
-
-   If the type exported here is also exported in modules from others,
-   you will get a type not equivalent.
-*/
 @deprecated("Do not use. This will be removed in v13")
 external /* Internal */
 
 __unsafe_cast: 'a => 'b = "%identity"
 
 /* Exceptions */
-
+@deprecated(
+  "`raise` has been renamed to `throw` to align with JavaScript vocabulary. Please use `throw` instead"
+)
 external raise: exn => 'a = "%raise"
 
 @deprecated("Use custom exception instead")
-let failwith = s => raise(Failure(s))
+let failwith = s => throw(Failure(s))
 
 @deprecated("Use custom exception instead")
-let invalid_arg = s => raise(Invalid_argument(s))
+let invalid_arg = s => throw(Invalid_argument(s))
 
 @deprecated("Use custom exception instead") exception Exit
+
+/**
+Raises the given exception, terminating execution unless caught by a surrounding try/catch block.
+
+## Examples
+
+```rescript
+let error = Error.make("Everything is upside down.")
+
+if 5 > 10 {
+  throw(error)
+} else {
+  Console.log("Phew, sanity still rules.")
+}
+```
+*/
+external throw: Stdlib_Error.t => 'a = "%raise"
 
 /* Composition operators */
 
