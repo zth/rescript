@@ -493,26 +493,6 @@ let filter_fragile_match_attributes attrs =
       | _ -> true)
     attrs
 
-let is_jsx_expression expr =
-  let rec loop attrs =
-    match attrs with
-    | [] -> false
-    | ({Location.txt = "JSX"}, _) :: _ -> true
-    | _ :: attrs -> loop attrs
-  in
-  match expr.pexp_desc with
-  | Pexp_apply _ -> loop expr.Parsetree.pexp_attributes
-  | _ -> false
-
-let has_jsx_attribute attributes =
-  let rec loop attrs =
-    match attrs with
-    | [] -> false
-    | ({Location.txt = "JSX"}, _) :: _ -> true
-    | _ :: attrs -> loop attrs
-  in
-  loop attributes
-
 let should_indent_binary_expr expr =
   let same_precedence_sub_expression operator sub_expression =
     match sub_expression with
@@ -759,3 +739,29 @@ let is_tuple_array (expr : Parsetree.expression) =
   match expr with
   | {pexp_desc = Pexp_array items} -> List.for_all is_plain_tuple items
   | _ -> false
+
+let get_jsx_prop_loc = function
+  | Parsetree.JSXPropPunning (_, name) -> name.loc
+  | Parsetree.JSXPropValue (name, _, value) ->
+    {name.loc with loc_end = value.pexp_loc.loc_end}
+  | Parsetree.JSXPropSpreading (loc, _) -> loc
+
+let container_element_closing_tag_loc
+    (tag : Parsetree.jsx_closing_container_tag) =
+  {
+    tag.jsx_closing_container_tag_name.loc with
+    loc_start = tag.jsx_closing_container_tag_start;
+    loc_end = tag.jsx_closing_container_tag_end;
+  }
+
+(** returns the location of the /> token in a unary element *)
+let unary_element_closing_token (expression_loc : Warnings.loc) =
+  {
+    expression_loc with
+    loc_start =
+      {
+        expression_loc.loc_end with
+        pos_cnum = expression_loc.loc_end.pos_cnum - 2;
+        pos_bol = expression_loc.loc_end.pos_bol - 2;
+      };
+  }

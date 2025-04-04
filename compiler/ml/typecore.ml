@@ -179,6 +179,8 @@ let iter_expression f e =
       module_expr me
     | Pexp_pack me -> module_expr me
     | Pexp_await _ -> assert false (* should be handled earlier *)
+    | Pexp_jsx_element _ ->
+      failwith "Pexp_jsx_element should be transformed at this point."
   and case {pc_lhs = _; pc_guard; pc_rhs} =
     may expr pc_guard;
     expr pc_rhs
@@ -3197,6 +3199,8 @@ and type_expect_ ?type_clash_context ?in_function ?(recarg = Rejected) env sexp
   | Pexp_extension ext ->
     raise (Error_forward (Builtin_attributes.error_of_extension ext))
   | Pexp_await _ -> (* should be handled earlier *) assert false
+  | Pexp_jsx_element _ ->
+    failwith "Pexp_jsx_element is expected to be transformed at this point"
 
 and type_function ?in_function ~arity ~async loc attrs env ty_expected_ l
     caselist =
