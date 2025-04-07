@@ -15,6 +15,7 @@
 #### :bug: Bug fix
 
 - Fix node.js ExperimentalWarning. https://github.com/rescript-lang/rescript/pull/7379
+- Fix issue with gentype and stdlib json. https://github.com/rescript-lang/rescript/pull/7378
 
 #### :house: Internal
 
