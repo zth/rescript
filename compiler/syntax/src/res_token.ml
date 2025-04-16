@@ -98,6 +98,9 @@ type t =
   | Try
   | DocComment of Location.t * string
   | ModuleComment of Location.t * string
+  | LeftShift
+  | RightShift
+  | RightShiftUnsigned
 
 let precedence = function
   | HashEqual | ColonEqual -> 1
@@ -107,11 +110,12 @@ let precedence = function
   | Equal | EqualEqual | EqualEqualEqual | LessThan | GreaterThan | BangEqual
   | BangEqualEqual | LessEqual | GreaterEqual | BarGreater ->
     5
-  | Plus | PlusDot | Minus | MinusDot | PlusPlus -> 6
-  | Asterisk | AsteriskDot | Forwardslash | ForwardslashDot | Percent -> 7
-  | Exponentiation -> 8
-  | MinusGreater -> 9
-  | Dot -> 10
+  | LeftShift | RightShift | RightShiftUnsigned -> 6
+  | Plus | PlusDot | Minus | MinusDot | PlusPlus -> 7
+  | Asterisk | AsteriskDot | Forwardslash | ForwardslashDot | Percent -> 8
+  | Exponentiation -> 9
+  | MinusGreater -> 10
+  | Dot -> 11
   | _ -> 0
 
 let to_string = function
@@ -212,6 +216,9 @@ let to_string = function
   | Try -> "try"
   | DocComment (_loc, s) -> "DocComment " ^ s
   | ModuleComment (_loc, s) -> "ModuleComment " ^ s
+  | LeftShift -> "<<"
+  | RightShift -> ">>"
+  | RightShiftUnsigned -> ">>>"
 
 let keyword_table = function
   | "and" -> And

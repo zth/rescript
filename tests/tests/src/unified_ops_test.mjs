@@ -75,7 +75,17 @@ function bxor_bigint(a, b) {
   return a ^ b;
 }
 
+let bigintShiftLeft = (1n << 2n);
+
+let bigintShiftRight = (8n >> 2n);
+
 let int = 3;
+
+let intShiftLeft = 4;
+
+let intShiftRight = 2;
+
+let intShiftRightUnsigned = 2147483647;
 
 export {
   int,
@@ -101,5 +111,10 @@ export {
   pow_overflow,
   bxor_int,
   bxor_bigint,
+  intShiftLeft,
+  intShiftRight,
+  intShiftRightUnsigned,
+  bigintShiftLeft,
+  bigintShiftRight,
 }
 /* No side effect */
