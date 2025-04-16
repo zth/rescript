@@ -26,7 +26,7 @@ ninja/ninja:
 
 ninja: ninja/ninja
 
-test: lib
+test: build lib
 	node scripts/test.js -all
 
 test-analysis:
