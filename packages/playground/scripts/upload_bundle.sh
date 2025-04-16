@@ -1,13 +1,14 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script will publish the compiler.js bundle / packages cmij.js files to our KeyCDN server.
 # The target folder on KeyCDN will be the compiler.js' version number.
 # This script requires `curl` / `openssl` to be installed.
 
-SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd -P)
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+PLAYGROUND_DIR="$(dirname "$(dirname "$SCRIPT_PATH")")"
 
 # Get the actual version from the compiled playground bundle
-VERSION=$(cd $SCRIPT_DIR; node -e 'require("./compiler.js"); console.log(rescript_compiler.make().rescript.version)')
+VERSION="$(node -e "console.log(require('$PLAYGROUND_DIR/compiler.js').rescript_compiler.make().rescript.version)")"
 
 if [ -z "${KEYCDN_USER}" ]; then
   echo "KEYCDN_USER environment variable not set. Make sure to set the environment accordingly."
@@ -20,7 +21,7 @@ if [ -z "${KEYCDN_PASSWORD}" ]; then
 fi
 
 KEYCDN_SRV="ftp.keycdn.com"
-NETRC_FILE="${SCRIPT_DIR}/.netrc"
+NETRC_FILE="${PLAYGROUND_DIR}/.netrc"
 
 # To make sure to not leak any secrets in the bash history, we create a NETRC_FILE
 # with the credentials provided via ENV variables.
@@ -32,13 +33,13 @@ fi
 PACKAGES=("compiler-builtins" "@rescript/react")
 
 echo "Uploading compiler.js file..."
-curl --ftp-create-dirs -T "${SCRIPT_DIR}/compiler.js" --ssl --tls-max 1.2 --netrc-file $NETRC_FILE ftp://${KEYCDN_SRV}/v${VERSION}/compiler.js
+curl --ftp-create-dirs -T "${PLAYGROUND_DIR}/compiler.js" --ssl --tls-max 1.2 --netrc-file $NETRC_FILE ftp://${KEYCDN_SRV}/v${VERSION}/compiler.js
 
 echo "---"
 echo "Uploading packages cmij files..."
 for dir in ${PACKAGES[@]};
 do
-  SOURCE="${SCRIPT_DIR}/packages/${dir}"
+  SOURCE="${PLAYGROUND_DIR}/packages/${dir}"
   TARGET="ftp://${KEYCDN_SRV}/v${VERSION}/${dir}"
 
   echo "Uploading '$SOURCE/cmij.js' to '$TARGET/cmij.js'..."
@@ -49,7 +50,7 @@ done
 # we now upload the bundled stdlib runtime files
 
 DIR="compiler-builtins/stdlib"
-SOURCE="${SCRIPT_DIR}/packages/${DIR}"
+SOURCE="${PLAYGROUND_DIR}/packages/${DIR}"
 TARGET="ftp://${KEYCDN_SRV}/v${VERSION}/${DIR}"
 
 echo "Uploading '$SOURCE/*.js' to '$TARGET/*.js'..."

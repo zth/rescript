@@ -406,21 +406,18 @@ jobs:
 
       - name: Build playground compiler
         if: matrix.build_playground
-        run: |
-          opam exec -- node packages/playground-bundling/scripts/generate_cmijs.js
-          opam exec -- dune build --profile browser
-          cp ./_build/default/compiler/jsoo/jsoo_playground_main.bc.js playground/compiler.cjs
+        run: opam exec -- make playground playground-cmijs
 
       - name: Test playground compiler
         if: matrix.build_playground
-        run: node playground/playground_test.cjs
+        run: yarn workspace playground test
 
       - name: Upload playground compiler to CDN
         if: ${{ matrix.build_playground && startsWith(github.ref, 'refs/tags/v') }}
         env:
           KEYCDN_USER: ${{ secrets.KEYCDN_USER }}
           KEYCDN_PASSWORD: ${{ secrets.KEYCDN_PASSWORD }}
-        run: bash playground/upload_bundle.sh
+        run: yarn workspace playground upload-bundle
 
       - name: "Upload artifacts: binaries"
         if: matrix.upload_binaries
@@ -513,23 +510,36 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      - name: Make test directory
+        id: tmp-dir
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            dir=$(powershell -Command "[System.IO.Path]::GetTempPath() + [System.Guid]::NewGuid().ToString()" | tr -d '\r')
+            mkdir -p "$dir"
+          else
+            dir=$(mktemp -d)
+          fi
+          echo "path=$dir" >> "$GITHUB_OUTPUT"
+          cp -r tests/package_tests/installation_test/* "$dir"
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           name: npm-packages
-          path: packages/test
+          path: ${{ steps.tmp-dir.outputs.path }}
 
       - name: Install ReScript package
         run: |
           npm i --ignore-scripts --no-audit \
             rescript-${{ needs.package.outputs.rescript_version }}.tgz
         shell: bash
-        working-directory: packages/test
+        working-directory: ${{ steps.tmp-dir.outputs.path }}
 
       - name: Test installation
-        run: npx rescript -h && npx rescript build && cat src/Test.bs.js
+        run: npx rescript -h && npx rescript build && cat src/Test.res.js
         shell: bash
-        working-directory: packages/test
+        working-directory: ${{ steps.tmp-dir.outputs.path }}
 
   publish:
     needs: [package, installationTest]
@@ -564,5 +574,5 @@ jobs:
       - name: Update Website Playground
         env:
           NEXT_REVALIDATE_SECRET_TOKEN: ${{ secrets.NEXT_REVALIDATE_SECRET_TOKEN }}
-        run: ./playground/website_update_playground.sh
+        run: yarn workspace playground revalidate
         shell: bash
