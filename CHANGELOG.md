@@ -43,6 +43,7 @@
 #### :house: Internal
 
 - Better representation of JSX in AST. https://github.com/rescript-lang/rescript/pull/7286
+- Clean up default warnings. https://github.com/rescript-lang/rescript/pull/7413
 
 #### :nail_care: Polish
 
