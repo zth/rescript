@@ -37,6 +37,12 @@ external fromStringExn: string => bigint = "BigInt"
 @val external fromInt: int => bigint = "BigInt"
 @val external fromFloat: float => bigint = "BigInt"
 
+let fromFloat = (value: float) => {
+  try Some(fromFloat(value)) catch {
+  | _ => None
+  }
+}
+
 @send
 /**
 Formats a `bigint` as a string. Return a `string` representing the given value.
