@@ -354,6 +354,7 @@ and lambda_apply = {
   ap_args: lambda list;
   ap_loc: Location.t;
   ap_inlined: inline_attribute; (* specified with the [@inlined] attribute *)
+  ap_transformed_jsx: bool;
 }
 
 and lambda_switch = {

@@ -1204,7 +1204,7 @@ let append_children_prop (config : Jsx_common.jsx_config) mapper
         Exp.apply
           (Exp.ident
              {txt = Ldot (element_binding, "someElement"); loc = Location.none})
-          [(Nolabel, child)]
+          [(Nolabel, mapper.expr mapper child)]
     in
     let is_optional =
       match component_description with
@@ -1273,7 +1273,7 @@ let mk_react_jsx (config : Jsx_common.jsx_config) mapper loc attrs
         [key_prop; (nolabel, unit_expr ~loc:Location.none)] )
   in
   let args = [(nolabel, elementTag); (nolabel, props_record)] @ key_and_unit in
-  Exp.apply ~loc ~attrs jsx_expr args
+  Exp.apply ~loc ~attrs ~transformed_jsx:true jsx_expr args
 
 (* In most situations, the component name is the make function from a module. 
     However, if the name contains a lowercase letter, it means it probably an external component.
