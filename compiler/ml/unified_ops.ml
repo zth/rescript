@@ -208,6 +208,19 @@ let entries =
         };
     };
     {
+      path = builtin "~~";
+      name = "%bitnot";
+      form = Unary;
+      specialization =
+        {
+          int = Pnotint;
+          bool = None;
+          float = None;
+          bigint = Some Pnotbigint;
+          string = None;
+        };
+    };
+    {
       path = builtin "&";
       name = "%bitand";
       form = Binary;

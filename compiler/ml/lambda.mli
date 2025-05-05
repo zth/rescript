@@ -177,6 +177,7 @@ type primitive =
   | Pandint
   | Porint
   | Pxorint
+  | Pnotint
   | Plslint
   | Plsrint
   | Pasrint
@@ -212,6 +213,7 @@ type primitive =
   | Pandbigint
   | Porbigint
   | Pxorbigint
+  | Pnotbigint
   | Plslbigint
   | Pasrbigint
   | Pbigintcomp of comparison

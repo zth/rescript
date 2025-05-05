@@ -72,6 +72,7 @@ type t =
   | Pandint
   | Porint
   | Pxorint
+  | Pnotint
   | Plslint
   | Plsrint
   | Pasrint
@@ -106,6 +107,7 @@ type t =
   | Pandbigint
   | Porbigint
   | Pxorbigint
+  | Pnotbigint
   | Plslbigint
   | Pasrbigint
   | Pbigintcomp of Lam_compat.comparison
