@@ -1070,6 +1070,34 @@ and expression_desc cxt ~(level : int) f x : cxt =
         P.string f "...";
         expression ~level:13 cxt f e)
 
+and print_indented_list (f : P.t) (parent_expr_level : int) (cxt : cxt)
+    (items : 'a list) (print_item_func : int -> cxt -> P.t -> 'a -> cxt) : cxt =
+  if List.length items = 0 then cxt
+  else
+    P.group f 1 (fun () ->
+        (* Increment indent level by 1 for this block of items *)
+        P.newline f;
+        (* Start the block on a new, fully indented line for the first item *)
+        let rec process_items current_cxt_for_fold remaining_items =
+          match remaining_items with
+          | [] ->
+            current_cxt_for_fold
+            (* Base case for recursion, though initial check avoids empty items *)
+          | [last_item] ->
+            (* Print the last item, but DO NOT print a newline after it *)
+            print_item_func parent_expr_level current_cxt_for_fold f last_item
+          | current_item :: next_items ->
+            let cxt_after_current =
+              print_item_func parent_expr_level current_cxt_for_fold f
+                current_item
+            in
+            P.newline f;
+            (* Add a newline AFTER the current item, to prepare for the NEXT item *)
+            process_items cxt_after_current next_items
+        in
+        (* Initial call to the recursive helper; initial check ensures items is not empty *)
+        process_items cxt items)
+
 and print_jsx cxt ?(spread_props : J.expression option)
     ?(key : J.expression option) ~(level : int) f (fnName : string)
     (tag : J.expression) (fields : (string * J.expression) list) : cxt =
@@ -1098,71 +1126,116 @@ and print_jsx cxt ?(spread_props : J.expression option)
         else None)
       fields
   in
-  let print_props cxt =
+  let print_props cxt props =
     (* If a key is present, should be printed before the spread props,
     This is to ensure tools like ESBuild use the automatic JSX runtime *)
-    let cxt =
-      match key with
-      | None -> cxt
-      | Some key ->
-        P.string f " key={";
-        let cxt = expression ~level:0 cxt f key in
-        P.string f "} ";
-        cxt
+    let print_key key cxt =
+      P.string f "key={";
+      let cxt_k = expression ~level:0 cxt f key in
+      P.string f "} ";
+      cxt_k
     in
-    let props = List.filter (fun (n, _) -> n <> "children") fields in
-    let cxt =
-      match spread_props with
-      | None -> cxt
-      | Some spread ->
-        P.string f " {...";
-        let cxt = expression ~level:0 cxt f spread in
-        P.string f "} ";
-        cxt
-    in
-    if List.length props = 0 then cxt
-    else
-      (List.fold_left (fun acc (n, x) ->
-           P.space f;
-           let prop_name = Js_dump_property.property_key_string n in
 
-           P.string f prop_name;
-           P.string f "=";
-           P.string f "{";
-           let next = expression ~level:0 acc f x in
-           P.string f "}";
-           next))
-        cxt props
+    let print_spread_props spread cxt =
+      P.string f "{...";
+      let cxt = expression ~level:0 cxt f spread in
+      P.string f "} ";
+      cxt
+    in
+
+    let print_prop n x ctx =
+      let prop_name = Js_dump_property.property_key_string n in
+      P.string f prop_name;
+      P.string f "=";
+      P.string f "{";
+      let next_cxt = expression ~level:0 ctx f x in
+      P.string f "}";
+      next_cxt
+    in
+    let printable_props =
+      (match key with
+      | None -> []
+      | Some k -> [print_key k])
+      @ (match spread_props with
+        | None -> []
+        | Some spread -> [print_spread_props spread])
+      @ List.map (fun (n, x) -> print_prop n x) props
+    in
+    if List.length printable_props = 0 then (
+      match children_opt with
+      | Some _ -> cxt
+      | None ->
+        (* Put a space the tag name and /> *)
+        P.space f;
+        cxt)
+    else
+      P.group f 1 (fun () ->
+          P.newline f;
+          let rec process_remaining_props acc_cxt printable_props =
+            match printable_props with
+            | [] -> acc_cxt
+            | print_prop :: [] -> print_prop acc_cxt
+            | print_prop :: tail ->
+              let next_cxt = print_prop acc_cxt in
+              P.newline f;
+              process_remaining_props next_cxt tail
+          in
+          process_remaining_props cxt printable_props)
   in
-  match children_opt with
-  | None ->
-    P.string f "<";
-    let cxt = cxt |> print_tag |> print_props in
-    P.string f "/>";
-    cxt
-  | Some children ->
-    let child_is_jsx child =
-      match child.J.expression_desc with
+
+  let print_one_child expr_level_for_child current_cxt_for_child f_format
+      child_expr =
+    let child_is_jsx_itself =
+      match child_expr.J.expression_desc with
       | J.Call (_, _, {call_transformed_jsx = is_jsx}) -> is_jsx
       | _ -> false
     in
-
-    P.string f "<";
-    let cxt = cxt |> print_tag |> print_props in
-
-    P.string f ">";
-    if List.length children > 0 then P.newline f;
-
-    let cxt =
-      List.fold_left
-        (fun acc e ->
-          if not (child_is_jsx e) then P.string f "{";
-          let next = expression ~level acc f e in
-          if not (child_is_jsx e) then P.string f "}";
-          P.newline f;
-          next)
-        cxt children
+    if not child_is_jsx_itself then P.string f_format "{";
+    let next_cxt =
+      expression ~level:expr_level_for_child current_cxt_for_child f_format
+        child_expr
     in
+    if not child_is_jsx_itself then P.string f_format "}";
+    next_cxt
+  in
+
+  let props = List.filter (fun (n, _) -> n <> "children") fields in
+
+  (* Actual printing of JSX element starts here *)
+  P.string f "<";
+  let cxt = print_tag cxt in
+  let cxt = print_props cxt props in
+  (* print_props handles its own block and updates cxt *)
+
+  let has_multiple_props = List.length props > 0 in
+
+  match children_opt with
+  | None ->
+    (* Self-closing tag *)
+    if has_multiple_props then P.newline f;
+    P.string f "/>";
+    cxt
+  | Some children ->
+    (* Tag with children *)
+    let has_children = List.length children > 0 in
+    (* Newline for ">" only if props themselves were multi-line. Children alone don't push ">" to a new line. *)
+    if has_multiple_props then P.newline f;
+    P.string f ">";
+
+    let cxt_after_children =
+      if has_children then
+        (* Only call print_indented_list if there are children *)
+        print_indented_list f level cxt children print_one_child
+      else cxt
+      (* No children, no change to context here, no newlines from children block *)
+    in
+    let cxt = cxt_after_children in
+
+    (* The closing "</tag>" goes on a new line if the opening part was multi-line (due to props)
+       OR if there were actual children printed (which always makes the element multi-line).
+    *)
+    let element_content_was_multiline = has_multiple_props || has_children in
+    if element_content_was_multiline then P.newline f;
 
     P.string f "</";
     let cxt = print_tag cxt in

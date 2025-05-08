@@ -8,7 +8,7 @@ let React = {};
 let ReactDOM = {};
 
 function Preserve_jsx_test$Icon(props) {
-  return <strong/>;
+  return <strong />;
 }
 
 let Icon = {
@@ -16,31 +16,41 @@ let Icon = {
 };
 
 let _single_element_child = <div>
-<h1>
-{"Hello, world!"}
-</h1>
+  <h1>
+    {"Hello, world!"}
+  </h1>
 </div>;
 
 let _multiple_element_children = <div>
-<h1>
-{"Hello, world!"}
-</h1>
-<Preserve_jsx_test$Icon/>
+  <h1>
+    {"Hello, world!"}
+  </h1>
+  <Preserve_jsx_test$Icon />
 </div>;
 
 let _single_element_fragment = <>
-{Primitive_option.some(<input/>)}
+  {Primitive_option.some(<input />)}
 </>;
 
 let _multiple_element_fragment = <>
-<input type={"text"}/>
-<input type={"number"}/>
+  <input
+    type={"text"}
+  />
+  <input
+    type={"number"}
+  />
 </>;
 
-let _unary_element_with_props = <input className={"foo"} type={"text"}/>;
+let _unary_element_with_props = <input
+  className={"foo"}
+  type={"text"}
+/>;
 
-let _container_element_with_props_and_children = <div className={"foo"} title={"foo"}>
-{"Hello, world!"}
+let _container_element_with_props_and_children = <div
+  className={"foo"}
+  title={"foo"}
+>
+  {"Hello, world!"}
 </div>;
 
 let baseProps = {
@@ -50,46 +60,74 @@ let baseProps = {
 
 let newrecord = {...baseProps};
 
-let _unary_element_with_spread_props = <input {...newrecord}  type={"text"}/>;
+let _unary_element_with_spread_props = <input
+  {...newrecord} 
+  type={"text"}
+/>;
 
 let newrecord$1 = {...baseProps};
 
-let _container_with_spread_props = <div {...newrecord$1}  title={"barry"} className={"barry"}>
-{"Hello, world!"}
-<input type={"text"}/>
+let _container_with_spread_props = <div
+  {...newrecord$1} 
+  title={"barry"}
+  className={"barry"}
+>
+  {"Hello, world!"}
+  <input
+    type={"text"}
+  />
 </div>;
 
 let baseChildren = [
   <span>
-  {"Hello, world!"}
+    {"Hello, world!"}
   </span>,
   <span>
-  {"Hello, world!"}
+    {"Hello, world!"}
   </span>
 ];
 
-let _container_with_spread_children = <div className={"barry"} title={"barry"}>
-{baseChildren}
+let _container_with_spread_children = <div
+  className={"barry"}
+  title={"barry"}
+>
+  {baseChildren}
 </div>;
 
 let newrecord$2 = {...baseProps};
 
-let _container_with_spread_props_and_children = <div {...newrecord$2}  title={"barry"} className={"barry"}>
-{baseChildren}
+let _container_with_spread_props_and_children = <div
+  {...newrecord$2} 
+  title={"barry"}
+  className={"barry"}
+>
+  {baseChildren}
 </div>;
 
 let newrecord$3 = {...baseProps};
 
-let _unary_element_with_spread_props_keyed = <input key={"barry-key"}  {...newrecord$3}  type={"text"}/>;
+let _unary_element_with_spread_props_keyed = <input
+  key={"barry-key"} 
+  {...newrecord$3} 
+  type={"text"}
+/>;
 
 let newrecord$4 = {...baseProps};
 
-let _container_with_spread_props_keyed = <div key={"barry-key"}  {...newrecord$4}  title={"barry"} className={"barry"}>
-{"Hello, world!"}
-<input type={"text"}/>
+let _container_with_spread_props_keyed = <div
+  key={"barry-key"} 
+  {...newrecord$4} 
+  title={"barry"}
+  className={"barry"}
+>
+  {"Hello, world!"}
+  <input
+    type={"text"}
+  />
 </div>;
 
-let _unary_element_with_only_spread_props = <input {...baseProps} />;
+let _unary_element_with_only_spread_props = <input
+  {...baseProps} />;
 
 function QueryClientProvider(props) { return props.children }
 ;
@@ -98,7 +136,7 @@ let A = {};
 
 function Preserve_jsx_test$B(props) {
   return <p>
-  {"Hello, world!"}
+    {"Hello, world!"}
   </p>;
 }
 
@@ -107,14 +145,14 @@ let B = {
 };
 
 let _external_component_with_children = <QueryClientProvider>
-<strong/>
-<Preserve_jsx_test$B/>
+  <strong />
+  <Preserve_jsx_test$B />
 </QueryClientProvider>;
 
 function Preserve_jsx_test$MyWeirdComponent(props) {
   return <p>
-  {"foo"}
-  {props["\\\"MyWeirdProp\""]}
+    {"foo"}
+    {props["\\\"MyWeirdProp\""]}
   </p>;
 }
 
@@ -122,7 +160,39 @@ let MyWeirdComponent = {
   make: Preserve_jsx_test$MyWeirdComponent
 };
 
-let _escaped_jsx_prop = <Preserve_jsx_test$MyWeirdComponent MyWeirdProp={"bar"}/>;
+let _escaped_jsx_prop = <Preserve_jsx_test$MyWeirdComponent
+  MyWeirdProp={"bar"}
+/>;
+
+let _large_component = <div
+  className={"bar"}
+  tabIndex={1}
+  title={"foo"}
+  onClick={param => {}}
+  onMouseDown={param => {}}
+>
+  <p
+    className={"bar"}
+    tabIndex={1}
+    title={"foo"}
+    onClick={param => {}}
+    onMouseDown={param => {}}
+  >
+    {"Hello, world!"}
+  </p>
+  <strong
+    className={"bar"}
+    tabIndex={1}
+    title={"foo"}
+    onClick={param => {}}
+    onMouseDown={param => {}}
+  >
+    {"Hello, world!"}
+  </strong>
+  <p>
+    {5}
+  </p>
+</div>;
 
 export {
   React,
@@ -148,5 +218,6 @@ export {
   _external_component_with_children,
   MyWeirdComponent,
   _escaped_jsx_prop,
+  _large_component,
 }
 /* _single_element_child Not a pure module */
