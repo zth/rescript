@@ -126,3 +126,5 @@ module ComponentWithOptionalProps = {
 }
 
 let _optional_props = <ComponentWithOptionalProps i=1 s="test" element={<div />} />
+
+let _props_with_hyphen = <label ariaLabel={"close sidebar"} dataTestId="test" />

@@ -1154,7 +1154,7 @@ and print_jsx cxt ?(spread_props : J.expression option)
     in
 
     let print_prop n x ctx =
-      let prop_name = Js_dump_property.property_key_string n in
+      let prop_name = Ext_ident.unwrap_uppercase_exotic n in
       P.string f prop_name;
       P.string f "=";
       print_prop_value x ctx
