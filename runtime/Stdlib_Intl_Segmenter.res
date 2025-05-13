@@ -1,6 +1,4 @@
-/***
-Not supported in Firefox
-*/
+@notUndefined
 type t
 
 type granularity = [#grapheme | #word | #sentence]

@@ -6,6 +6,7 @@ See [async iterator protocols](https://developer.mozilla.org/en-US/docs/Web/Java
 /**
 The type representing an async iterator.
 */
+@notUndefined
 type t<'a>
 
 type value<'a> = {
