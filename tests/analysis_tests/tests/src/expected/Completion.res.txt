@@ -634,6 +634,7 @@ ContextPath array<int>->m
 ContextPath array<int>
 Path Stdlib.Array.m
 Path ArrayUtils.m
+Path m
 [{
     "label": "Array.map",
     "kind": 12,
@@ -656,6 +657,7 @@ Resolved opens 1 Stdlib
 ContextPath string->toU
 ContextPath string
 Path Stdlib.String.toU
+Path toU
 [{
     "label": "String.toUpperCase",
     "kind": 12,
@@ -673,6 +675,7 @@ ContextPath Value[op]->e
 ContextPath Value[op]
 Path op
 Path Stdlib.Option.e
+Path e
 [{
     "label": "Option.equal",
     "kind": 12,
@@ -693,6 +696,7 @@ ContextPath Value[fa]
 Path fa
 CPPipe pathFromEnv:ForAuto found:true
 Path ForAuto.
+Path 
 [{
     "label": "ForAuto.abc",
     "kind": 12,
@@ -932,6 +936,7 @@ ContextPath Value[r]
 Path r
 CPPipe pathFromEnv: found:true
 Path Completion.
+Path 
 [{
     "label": "x",
     "kind": 5,
@@ -960,6 +965,7 @@ ContextPath Value[Objects, Rec, recordVal]
 Path Objects.Rec.recordVal
 CPPipe pathFromEnv:Rec found:true
 Path Objects.Rec.
+Path 
 [{
     "label": "xx",
     "kind": 5,
@@ -1046,6 +1052,7 @@ ContextPath Value[q]
 Path q
 CPPipe pathFromEnv: found:true
 Path Completion.aa
+Path aa
 ContextPath Value[q].aa->
 ContextPath Value[q].aa
 ContextPath Value[q]
@@ -1055,8 +1062,10 @@ ContextPath Value[q]
 Path q
 CPPipe pathFromEnv: found:true
 Path Completion.aa
+Path aa
 CPPipe pathFromEnv: found:true
 Path Completion.
+Path 
 [{
     "label": "x",
     "kind": 5,
@@ -1086,6 +1095,7 @@ ContextPath Value[q]
 Path q
 CPPipe pathFromEnv: found:true
 Path Completion.aa
+Path aa
 ContextPath Value[q].aa->n
 ContextPath Value[q].aa
 ContextPath Value[q]
@@ -1095,8 +1105,10 @@ ContextPath Value[q]
 Path q
 CPPipe pathFromEnv: found:true
 Path Completion.aa
+Path aa
 CPPipe pathFromEnv: found:true
 Path Completion.n
+Path n
 [{
     "label": "name",
     "kind": 5,
@@ -1307,6 +1319,7 @@ ContextPath Value[FAO, forAutoObject]
 Path FAO.forAutoObject
 CPPipe pathFromEnv:FAR found:true
 Path FAR.
+Path 
 [{
     "label": "forAuto",
     "kind": 5,
@@ -1338,8 +1351,10 @@ ContextPath Value[FAO, forAutoObject]
 Path FAO.forAutoObject
 CPPipe pathFromEnv:FAR found:true
 Path FAR.forAuto
+Path forAuto
 CPPipe pathFromEnv:ForAuto found:false
 Path ForAuto.
+Path 
 [{
     "label": "ForAuto.abc",
     "kind": 12,
@@ -1351,6 +1366,12 @@ Path ForAuto.
     "kind": 12,
     "tags": [],
     "detail": "(t, int) => t",
+    "documentation": null
+  }, {
+    "label": "myAmazingFunction",
+    "kind": 12,
+    "tags": [],
+    "detail": "(int, int) => int",
     "documentation": null
   }]
 
@@ -1424,6 +1445,7 @@ ContextPath Value[_z]
 Path _z
 CPPipe pathFromEnv: found:true
 Path Completion.
+Path 
 [{
     "label": "x",
     "kind": 5,
@@ -1586,6 +1608,7 @@ ContextPath Value[funRecord]
 Path funRecord
 CPPipe pathFromEnv: found:true
 Path Completion.someFun
+Path someFun
 Found type for function (~name: string) => unit
 [{
     "label": "name",
@@ -1612,6 +1635,7 @@ ContextPath Value[retAA]
 Path retAA
 CPPipe pathFromEnv: found:true
 Path Completion.
+Path 
 [{
     "label": "x",
     "kind": 5,
@@ -2191,6 +2215,7 @@ ContextPath Value[funRecord]
 Path funRecord
 CPPipe pathFromEnv: found:true
 Path Completion.
+Path 
 [{
     "label": "someFun",
     "kind": 5,
@@ -2217,6 +2242,7 @@ ContextPath array->ma
 ContextPath array
 Path Stdlib.Array.ma
 Path ArrayUtils.ma
+Path ma
 [{
     "label": "Array.map",
     "kind": 12,
@@ -2369,6 +2395,7 @@ Resolved opens 3 Stdlib Completion Completion
 ContextPath int->t
 ContextPath int
 Path Stdlib.Int.t
+Path t
 [{
     "label": "Int.toStringWithRadix",
     "kind": 12,
@@ -2440,6 +2467,7 @@ Resolved opens 3 Stdlib Completion Completion
 ContextPath float->t
 ContextPath float
 Path Stdlib.Float.t
+Path t
 [{
     "label": "Float.toStringWithRadix",
     "kind": 12,
@@ -2512,6 +2540,7 @@ ContextPath Value[ok]->g
 ContextPath Value[ok]
 Path ok
 Path Stdlib.Result.g
+Path g
 [{
     "label": "Result.getExn",
     "kind": 12,
@@ -2547,6 +2576,7 @@ ContextPath Value[rWithDepr]
 Path rWithDepr
 CPPipe pathFromEnv: found:true
 Path Completion.so
+Path so
 [{
     "label": "someInt",
     "kind": 5,
@@ -2606,6 +2636,7 @@ ContextPath Value[uncurried](Nolabel)
 ContextPath Value[uncurried]
 Path uncurried
 Path Stdlib.Int.toS
+Path toS
 [{
     "label": "Int.toStringWithRadix",
     "kind": 12,
