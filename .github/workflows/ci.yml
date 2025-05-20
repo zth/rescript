@@ -406,7 +406,7 @@ jobs:
         with:
           name: rescript
           provider: Cloudflare
-          endpoint: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          endpoint: https://${{ vars.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
           access-key-id: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
           secret-access-key: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
           acl: private
