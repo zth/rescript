@@ -549,7 +549,7 @@ jobs:
           YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
         run: |
           yarn workspaces foreach -W --no-private \
-            npm publish --tag ci
+            npm publish --tolerate-republish --tag ci
 
       - name: Update Website Playground
         run: curl -X POST "${{ secrets.CLOUDFLARE_PAGES_DEPLOYMENT_HOOK }}"
