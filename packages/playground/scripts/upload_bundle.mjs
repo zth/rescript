@@ -49,6 +49,7 @@ const rcloneOpts = (process.env.CI
     "--checkers 5000",
     "--transfers 8",
     "--buffer-size 128M",
+    "--s3-no-check-bucket",
     "--s3-chunk-size 128M",
     "--s3-upload-concurrency 8",
   ]
@@ -57,6 +58,7 @@ const rcloneOpts = (process.env.CI
     "--checkers 5000",
     "--transfers 16",
     "--buffer-size 128M",
+    "--s3-no-check-bucket",
     "--s3-chunk-size 128M",
     "--s3-upload-concurrency 16",
   ]).join(" ");
