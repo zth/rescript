@@ -30,6 +30,9 @@
     "Paul Tsnobiladzé (https://github.com/tsnobip)",
     "Woonki Moon (https://github.com/mununki)"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "lib"
   ],
