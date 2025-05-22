@@ -1,6 +1,64 @@
 type extract_concrete_typedecl =
   Env.t -> Types.type_expr -> Path.t * Path.t * Types.type_declaration
 
+let configured_jsx_module : string option ref = ref None
+
+let with_configured_jsx_module s =
+  match !configured_jsx_module with
+  | None -> s
+  | Some module_name -> module_name ^ "." ^ s
+
+module Parser : sig
+  type comment
+
+  val parse_source : (string -> Parsetree.structure * comment list) ref
+
+  val reprint_source : (Parsetree.structure -> comment list -> string) ref
+
+  val parse_expr_at_loc :
+    Warnings.loc -> (Parsetree.expression * comment list) option
+
+  val reprint_expr_at_loc :
+    ?mapper:(Parsetree.expression -> Parsetree.expression option) ->
+    Warnings.loc ->
+    string option
+end = struct
+  type comment
+
+  let parse_source : (string -> Parsetree.structure * comment list) ref =
+    ref (fun _ -> ([], []))
+
+  let reprint_source : (Parsetree.structure -> comment list -> string) ref =
+    ref (fun _ _ -> "")
+
+  let extract_location_string ~src (loc : Location.t) =
+    let start_pos = loc.loc_start in
+    let end_pos = loc.loc_end in
+    let start_offset = start_pos.pos_cnum in
+    let end_offset = end_pos.pos_cnum in
+    String.sub src start_offset (end_offset - start_offset)
+
+  let parse_expr_at_loc loc =
+    (* TODO: Maybe cache later on *)
+    let src = Ext_io.load_file loc.Location.loc_start.pos_fname in
+    let sub_src = extract_location_string ~src loc in
+    let parsed, comments = !parse_source sub_src in
+    match parsed with
+    | [{Parsetree.pstr_desc = Pstr_eval (exp, _)}] -> Some (exp, comments)
+    | _ -> None
+
+  let wrap_in_structure exp =
+    [{Parsetree.pstr_desc = Pstr_eval (exp, []); pstr_loc = Location.none}]
+
+  let reprint_expr_at_loc ?(mapper = fun _ -> None) loc =
+    match parse_expr_at_loc loc with
+    | Some (exp, comments) -> (
+      match mapper exp with
+      | Some exp -> Some (!reprint_source (wrap_in_structure exp) comments)
+      | None -> None)
+    | None -> None
+end
+
 type type_clash_statement = FunctionCall
 type type_clash_context =
   | SetRecordField
@@ -62,7 +120,7 @@ let is_record_type ~extract_concrete_typedecl ~env ty =
     | _ -> false
   with _ -> false
 
-let print_extra_type_clash_help ~extract_concrete_typedecl ~env ppf
+let print_extra_type_clash_help ~extract_concrete_typedecl ~env loc ppf
     (bottom_aliases : (Types.type_expr * Types.type_expr) option)
     type_clash_context =
   match (type_clash_context, bottom_aliases) with
@@ -103,9 +161,9 @@ let print_extra_type_clash_help ~extract_concrete_typedecl ~env ppf
         \  Floats and ints have their own mathematical operators. This means \
          you cannot %s a float and an int without converting between the two.\n\n\
         \  Possible solutions:\n\
-        \  - Ensure all values in this calculation has the type @{<info>%s@}. \
-         You can convert between floats and ints via \
-         @{<info>Belt.Float.toInt@} and @{<info>Belt.Int.fromFloat@}."
+        \  - Ensure all values in this calculation have the type @{<info>%s@}. \
+         You can convert between floats and ints via @{<info>Float.toInt@} and \
+         @{<info>Int.fromFloat@}."
         operator_text
         (if for_float then "float" else "int"));
     match (is_constant, bottom_aliases) with
@@ -153,7 +211,7 @@ let print_extra_type_clash_help ~extract_concrete_typedecl ~env ppf
       "\n\n\
       \  Possible solutions:\n\
       \  - Unwrap the option to its underlying value using \
-       `yourValue->Belt.Option.getWithDefault(someDefaultValue)`"
+       `yourValue->Option.getOr(someDefaultValue)`"
   | Some ComparisonOperator, _ ->
     fprintf ppf "\n\n  You can only compare things of the same type."
   | Some ArrayValue, _ ->
@@ -165,6 +223,10 @@ let print_extra_type_clash_help ~extract_concrete_typedecl ~env ppf
       \  - Use a tuple, if your array is of fixed length. Tuples can mix types \
        freely, and compiles to a JavaScript array. Example of a tuple: `let \
        myTuple = (10, \"hello\", 15.5, true)"
+  | _, Some (_, {desc = Tconstr (p2, _, _)}) when Path.same Predef.path_dict p2
+    ->
+    fprintf ppf
+      "@,@,Dicts are written like: @{<info>dict{\"a\": 1, \"b\": 2}@}@,"
   | _, Some ({Types.desc = Tconstr (_p1, _, _)}, {desc = Tconstr (p2, _, _)})
     when Path.same Predef.path_unit p2 ->
     fprintf ppf
@@ -176,15 +238,113 @@ let print_extra_type_clash_help ~extract_concrete_typedecl ~env ppf
   | _, Some ({desc = Tobject _}, ({Types.desc = Tconstr _} as t1))
     when is_record_type ~extract_concrete_typedecl ~env t1 ->
     fprintf ppf
-      "\n\n\
-      \  You're passing a @{<error>ReScript object@} where a @{<info>record@} \
-       is expected. \n\n\
-      \  - Did you mean to pass a record instead of an object? Objects are \
-       written with quoted keys, and records with unquoted keys. Remove the \
-       quotes from the object keys to pass it as a record instead of object. \n\n"
+      "@,\
+       @,\
+       You're passing a @{<error>ReScript object@} where a @{<info>record@} is \
+       expected. Objects are written with quoted keys, and records with \
+       unquoted keys.";
+
+    let suggested_rewrite =
+      Parser.reprint_expr_at_loc loc ~mapper:(fun exp ->
+          match exp.Parsetree.pexp_desc with
+          | Pexp_extension
+              ( {txt = "obj"},
+                PStr
+                  [
+                    {
+                      pstr_desc =
+                        Pstr_eval (({pexp_desc = Pexp_record _} as record), _);
+                    };
+                  ] ) ->
+            Some record
+          | _ -> None)
+    in
+    fprintf ppf
+      "@,\
+       @,\
+       Possible solutions: @,\
+       - Rewrite the object to a record%s@{<info>%s@}@,"
+      (match suggested_rewrite with
+      | Some _ -> ", like: "
+      | None -> "")
+      (match suggested_rewrite with
+      | Some rewrite -> rewrite
+      | None -> "")
   | _, Some ({Types.desc = Tconstr (p1, _, _)}, _)
     when Path.same p1 Predef.path_promise ->
     fprintf ppf "\n\n  - Did you mean to await this promise before using it?\n"
+  | _, Some ({Types.desc = Tconstr (p1, _, _)}, {Types.desc = Ttuple _})
+    when Path.same p1 Predef.path_array ->
+    let suggested_rewrite =
+      Parser.reprint_expr_at_loc loc ~mapper:(fun exp ->
+          match exp.Parsetree.pexp_desc with
+          | Pexp_array items ->
+            Some {exp with Parsetree.pexp_desc = Pexp_tuple items}
+          | _ -> None)
+    in
+    fprintf ppf
+      "\n\n  - Fix this by passing a tuple instead of an array%s@{<info>%s@}\n"
+      (match suggested_rewrite with
+      | Some _ -> ", like: "
+      | None -> "")
+      (match suggested_rewrite with
+      | Some rewrite -> rewrite
+      | None -> "")
+  | ( _,
+      Some
+        ( {desc = Tconstr (p, type_params, _)},
+          {desc = Tconstr (Pdot (Pident {name = "Jsx"}, "element", _), _, _)} )
+    ) -> (
+    (* Looking for a JSX element but got something else *)
+    let is_jsx_element ty =
+      match Ctype.expand_head env ty with
+      | {desc = Tconstr (Pdot (Pident {name = "Jsx"}, "element", _), _, _)} ->
+        true
+      | _ -> false
+    in
+
+    let print_jsx_msg ?(extra = "") name target_fn =
+      fprintf ppf
+        "@,\
+         @,\
+         In JSX, all content must be JSX elements. You can convert %s to a JSX \
+         element with @{<info>%s@}%s.@,"
+        name target_fn extra
+    in
+
+    match type_params with
+    | _ when Path.same p Predef.path_int ->
+      print_jsx_msg "int" (with_configured_jsx_module "int")
+    | _ when Path.same p Predef.path_string ->
+      print_jsx_msg "string" (with_configured_jsx_module "string")
+    | _ when Path.same p Predef.path_float ->
+      print_jsx_msg "float" (with_configured_jsx_module "float")
+    | [_] when Path.same p Predef.path_option ->
+      fprintf ppf
+        "@,\
+         @,\
+         You need to unwrap this option to its underlying value first, then \
+         turn that value into a JSX element.@,\
+         For @{<info>None@}, you can use @{<info>%s@} to output nothing into \
+         JSX.@,"
+        (with_configured_jsx_module "null")
+    | [tp] when Path.same p Predef.path_array && is_jsx_element tp ->
+      print_jsx_msg
+        ~extra:
+          (" (for example by using a pipe: ->"
+          ^ with_configured_jsx_module "array"
+          ^ ".")
+        "array"
+        (with_configured_jsx_module "array")
+    | [_] when Path.same p Predef.path_array ->
+      fprintf ppf
+        "@,\
+         @,\
+         You need to convert each item in this array to a JSX element first, \
+         then use @{<info>%s@} to convert the array of JSX elements into a \
+         single JSX element.@,"
+        (with_configured_jsx_module "array")
+    | _ -> ())
   | _ -> ()
 
 let type_clash_context_from_function sexp sfunct =
