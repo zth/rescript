@@ -10,10 +10,9 @@ type rec t =
 @unboxed
 type replacer = Keys(array<string>) | Replacer((string, t) => t)
 
-@raises @val external parseOrThrow: (string, ~reviver: (string, t) => t=?) => t = "JSON.parse"
-
-@deprecated("Use `parseOrThrow` instead") @raises @val
-external parseExn: (string, ~reviver: (string, t) => t=?) => t = "JSON.parse"
+@raises @val external parseExn: (string, ~reviver: (string, t) => t=?) => t = "JSON.parse"
+@deprecated("Use `parseExn` with optional parameter instead") @raises @val
+external parseExnWithReviver: (string, (string, t) => t) => t = "JSON.parse"
 
 @val external stringify: (t, ~replacer: replacer=?, ~space: int=?) => string = "JSON.stringify"
 @deprecated("Use `stringify` with optional parameter instead") @val

@@ -6,89 +6,39 @@ type t = bigint
 @val external asIntN: (~width: int, bigint) => bigint = "BigInt.asIntN"
 @val external asUintN: (~width: int, bigint) => bigint = "BigInt.asUintN"
 
+@val external fromString: string => bigint = "BigInt"
+
 @val
 /**
 Parses the given `string` into a `bigint` using JavaScript semantics. Return the
-number as a `bigint` if successfully parsed. Throws a syntax exception otherwise.
+number as a `bigint` if successfully parsed. Uncaught syntax exception otherwise.
 
 ## Examples
 
 ```rescript
-BigInt.fromStringOrThrow("123")->assertEqual(123n)
+BigInt.fromStringExn("123")->assertEqual(123n)
 
-BigInt.fromStringOrThrow("")->assertEqual(0n)
+BigInt.fromStringExn("")->assertEqual(0n)
 
-BigInt.fromStringOrThrow("0x11")->assertEqual(17n)
+BigInt.fromStringExn("0x11")->assertEqual(17n)
 
-BigInt.fromStringOrThrow("0b11")->assertEqual(3n)
+BigInt.fromStringExn("0b11")->assertEqual(3n)
 
-BigInt.fromStringOrThrow("0o11")->assertEqual(9n)
+BigInt.fromStringExn("0o11")->assertEqual(9n)
 
 /* catch exception */
-switch BigInt.fromStringOrThrow("a") {
+switch BigInt.fromStringExn("a") {
 | exception JsExn(_error) => assert(true)
 | _bigInt => assert(false)
 }
 ```
 */
-external fromStringOrThrow: string => bigint = "BigInt"
-
-/**
-Parses the given `string` into a `bigint` using JavaScript semantics. Returns 
-`Some(bigint)` if the string can be parsed, `None` otherwise.
-
-## Examples
-
-```rescript
-BigInt.fromString("123")->assertEqual(Some(123n))
-
-BigInt.fromString("")->assertEqual(Some(0n))
-
-BigInt.fromString("0x11")->assertEqual(Some(17n))
-
-BigInt.fromString("0b11")->assertEqual(Some(3n))
-
-BigInt.fromString("0o11")->assertEqual(Some(9n))
-
-BigInt.fromString("invalid")->assertEqual(None)
-```
-*/
-let fromString = (value: string) => {
-  try Some(fromStringOrThrow(value)) catch {
-  | _ => None
-  }
-}
-
-@deprecated("Use `fromStringOrThrow` instead") @val
 external fromStringExn: string => bigint = "BigInt"
-
 @val external fromInt: int => bigint = "BigInt"
-
-@val
-/**
-Converts a `float` to a `bigint` using JavaScript semantics. 
-Throws an exception if the float is not an integer or is infinite/NaN.
-
-## Examples
-
-```rescript
-BigInt.fromFloatOrThrow(123.0)->assertEqual(123n)
-
-BigInt.fromFloatOrThrow(0.0)->assertEqual(0n)
-
-BigInt.fromFloatOrThrow(-456.0)->assertEqual(-456n)
-
-/* This will throw an exception */
-switch BigInt.fromFloatOrThrow(123.5) {
-| exception JsExn(_error) => assert(true)
-| _bigInt => assert(false)
-}
-```
-*/
-external fromFloatOrThrow: float => bigint = "BigInt"
+@val external fromFloat: float => bigint = "BigInt"
 
 let fromFloat = (value: float) => {
-  try Some(fromFloatOrThrow(value)) catch {
+  try Some(fromFloat(value)) catch {
   | _ => None
   }
 }
