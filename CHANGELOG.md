@@ -41,6 +41,7 @@
 #### :house: Internal
 
 - Refactor the ast for record expressions and patterns. https://github.com/rescript-lang/rescript/pull/7528
+- Editor: add completions from included modules. https://github.com/rescript-lang/rescript/pull/7515
 
 # 12.0.0-alpha.13
 
