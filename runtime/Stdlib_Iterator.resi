@@ -68,7 +68,6 @@ mapKeysAsArray->assertEqual(["someKey", "someKey2"])
 
 Since March 2025, this feature works across the latest devices and browser versions.
 This feature might not work in older devices or browsers.
-```
 */
 @send
 external toArray: t<'a> => array<'a> = "toArray"
@@ -128,7 +127,7 @@ external forEach: (t<'a>, 'a => unit) => unit = "forEach"
 external ignore: t<'a> => unit = "%ignore"
 
 /**
-`drop((iterator, n))` returns a new iterator helper object that skips the given number of elements at the start of this iterator.
+`drop(iterator, n)` returns a new iterator helper object that skips the given number of elements at the start of this iterator.
 
 See [Iterator.prototype.drop](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Iterator/drop) on MDN.
 
@@ -145,7 +144,6 @@ seq->Iterator.next->assertEqual({done: false, value: Some(3)})
 
 Since March 2025, this feature works across the latest devices and browser versions.
 This feature might not work in older devices or browsers.
-```
 */
 @send
 external drop: (t<'a>, int) => t<'a> = "drop"
