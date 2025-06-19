@@ -16,6 +16,8 @@
 
 - Ignore inferred arity in functions inside `%raw` functions, leaving to `%ffi` the responsibility to check the arity since it gives an error in case of mismatch. https://github.com/rescript-lang/rescript/pull/7542
 - Pass the rewatch exit code through in wrapper script. https://github.com/rescript-lang/rescript/pull/7565
+- Prop punning when types don't match results in I/O error: _none_: No such file or directory. https://github.com/rescript-lang/rescript/pull/7533
+- Pass location to children prop in jsx ppx. https://github.com/rescript-lang/rescript/pull/7540
 
 #### :nail_care: Polish
 
