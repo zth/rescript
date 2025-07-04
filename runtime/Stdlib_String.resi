@@ -121,8 +121,30 @@ String.fromCodePointMany([0xd55c, 0xae00, 0x1f63a]) == `한글😺`
 @variadic @val
 external fromCodePointMany: array<int> => string = "String.fromCodePoint"
 
+/**
+`equal(str1, str2)` checks if two strings are equal.
+
+## Examples
+
+```rescript
+String.equal("hello", "hello") == true
+String.equal("hello", "world") == false
+String.equal("", "") == true
+```
+*/
 external equal: (string, string) => bool = "%equal"
 
+/**
+`compare(str1, str2)` compares two strings, returns an `Ordering.t` value.
+
+## Examples
+
+```rescript
+String.compare("hello", "hello") == Ordering.equal
+String.compare("apple", "banana") == Ordering.less
+String.compare("zebra", "apple") == Ordering.greater
+```
+*/
 external compare: (string, string) => Stdlib_Ordering.t = "%compare"
 
 /**
@@ -1089,11 +1111,6 @@ String.padEnd("abc", 1, "") == "abc"
 */
 @send
 external padEnd: (string, int, string) => string = "padEnd"
-
-// TODO: add docs
-@get_index external getSymbol: (string, Stdlib_Symbol.t) => option<'a> = ""
-@get_index external getSymbolUnsafe: (string, Stdlib_Symbol.t) => 'a = ""
-@set_index external setSymbol: (string, Stdlib_Symbol.t, 'a) => unit = ""
 
 /**
 `localeCompare(referenceStr, compareStr)` returns a float than indicatings

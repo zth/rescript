@@ -15,6 +15,9 @@
 #### :boom: Breaking Change
 
 - The legacy rescript cli can be called through rewatch via `rewatch legacy`. Arguments to rewatch need to be passed after the subcommand. Argument `--compiler-args` is now a subcommand `compiler-args`. https://github.com/rescript-lang/rescript/pull/7551
+- Remove `String.getSymbol` from standard library. https://github.com/rescript-lang/rescript/pull/7571
+- Remove `String.getSymbolUnsafe` from standard library. https://github.com/rescript-lang/rescript/pull/7571
+- Remove `String.setSymbol` from standard library. https://github.com/rescript-lang/rescript/pull/7571
 
 #### :rocket: New Feature
 
