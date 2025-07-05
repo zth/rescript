@@ -1,7 +1,7 @@
 import * as child_process from "node:child_process";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { bsc_exe, rescript_exe } from "#cli/bins";
+import { bsc_exe, rescript_legacy_exe } from "#cli/bins";
 
 /**
  * @typedef {{
@@ -158,7 +158,10 @@ export function setup(cwd = process.cwd()) {
      * @return {Promise<ExecResult>}
      */
     rescript(command, args = [], options = {}) {
-      const cliPath = path.join(import.meta.dirname, "../cli/rescript.js");
+      const cliPath = path.join(
+        import.meta.dirname,
+        "../cli/rescript-legacy.js",
+      );
       return exec("node", [cliPath, command, ...args].filter(Boolean), options);
     },
 
@@ -181,7 +184,7 @@ export function setup(cwd = process.cwd()) {
      * @return {Promise<ExecResult>}
      */
     execBuild(args = [], options = {}) {
-      return exec(rescript_exe, ["build", ...args], options);
+      return exec(rescript_legacy_exe, ["build", ...args], options);
     },
 
     /**
@@ -192,7 +195,7 @@ export function setup(cwd = process.cwd()) {
      * @return {Promise<ExecResult>}
      */
     execClean(args = [], options = {}) {
-      return exec(rescript_exe, ["clean", ...args], options);
+      return exec(rescript_legacy_exe, ["clean", ...args], options);
     },
 
     /**

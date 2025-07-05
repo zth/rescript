@@ -332,12 +332,12 @@ jobs:
 
       - name: Build runtime/stdlib with rewatch
         if: ${{ runner.os != 'Windows' }}
-        run: ./scripts/buildRuntimeRewatch.sh
+        run: ./scripts/buildRuntime.sh
         shell: bash
 
       - name: Build runtime/stdlib with bsb (Windows)
         if: ${{ runner.os == 'Windows' }}
-        run: ./scripts/buildRuntime.sh
+        run: ./scripts/buildRuntimeLegacy.sh
         shell: bash
 
       - name: Check for changes in lib folder
@@ -510,7 +510,7 @@ jobs:
       - name: Build website
         if: steps.diffcheck.outputs.clean == 'false'
         run: |
-          npm ci 
+          npm ci
           npm run build
 
       - name: Commit and push
@@ -569,7 +569,7 @@ jobs:
         working-directory: ${{ steps.tmp-dir.outputs.path }}
 
       - name: Test installation
-        run: npx rescript -h && npx rescript build && cat src/Test.res.js
+        run: npx rescript -h && npx rescript legacy build && cat src/Test.res.js
         shell: bash
         working-directory: ${{ steps.tmp-dir.outputs.path }}
 
@@ -581,7 +581,7 @@ jobs:
         working-directory: rewatch/testrepo
 
       - name: Run rewatch integration tests
-        run: ./rewatch/tests/suite-ci.sh node_modules/.bin/rewatch
+        run: ./rewatch/tests/suite-ci.sh node_modules/.bin/rescript
         shell: bash
 
   publish:

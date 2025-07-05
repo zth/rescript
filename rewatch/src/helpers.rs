@@ -227,20 +227,20 @@ pub fn get_rescript_legacy(root_path: &Path, workspace_root: Option<PathBuf>) ->
     match (
         root_path
             .join(&bin_dir)
-            .join("rescript.js")
+            .join("rescript-legacy.js")
             .canonicalize()
             .map(StrippedVerbatimPath::to_stripped_verbatim_path),
         workspace_root.map(|workspace_root| {
             workspace_root
                 .join(&bin_dir)
-                .join("rescript.js")
+                .join("rescript-legacy.js")
                 .canonicalize()
                 .map(StrippedVerbatimPath::to_stripped_verbatim_path)
         }),
     ) {
         (Ok(path), _) => path,
         (_, Some(Ok(path))) => path,
-        _ => panic!("Could not find rescript.exe"),
+        _ => panic!("Could not find rescript-legacy.exe"),
     }
 }
 
