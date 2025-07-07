@@ -86,10 +86,12 @@ let processCmtFiles ~cmtRoot =
                   cmtFilePath |> loadCmtFile))
 
 let runAnalysis ~cmtRoot =
+  UnusedModuleAlias.clear ();
   processCmtFiles ~cmtRoot;
   if runConfig.dce then (
     DeadException.forceDelayedItems ();
     DeadOptionalArgs.forceDelayedItems ();
+    UnusedModuleAlias.report_unused ();
     DeadCommon.reportDead ~checkOptionalArg:DeadOptionalArgs.check;
     WriteDeadAnnotations.write ());
   if runConfig.exception_ then Exception.Checks.doChecks ();

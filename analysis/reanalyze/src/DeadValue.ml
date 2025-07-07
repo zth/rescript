@@ -1,6 +1,7 @@
 (* Adapted from https://github.com/LexiFi/dead_code_analyzer *)
 
 open DeadCommon
+open UnusedModuleAlias
 
 let checkAnyValueBindingWithNoSideEffects
     ({vb_pat = {pat_desc}; vb_expr = expr; vb_loc = loc} :
@@ -116,6 +117,7 @@ let rec collectExpr super self (e : Typedtree.expression) =
   (match e.exp_desc with
   | Texp_ident (_path, _, {Types.val_loc = {loc_ghost = false; _} as locTo}) ->
     (* if Path.name _path = "rc" then assert false; *)
+    _path |> Common.Path.fromPathT |> mark_path_usage;
     if locFrom = locTo && _path |> Path.name = "emptyArray" then (
       (* Work around lowercase jsx with no children producing an artifact `emptyArray`
          which is called from its own location as many things are generated on the same location. *)
@@ -132,10 +134,12 @@ let rec collectExpr super self (e : Typedtree.expression) =
             exp_desc =
               Texp_ident
                 (path, _, {Types.val_loc = {loc_ghost = false; _} as locTo});
-            exp_type;
-          };
+                path |> Common.Path.fromPathT |> mark_path_usage;
+                exp_type;
+              };
         args;
       } ->
+    path |> Common.Path.fromPathT |> mark_path_usage;
     args
     |> processOptionalArgs ~expType:exp_type
          ~locFrom:(locFrom : Location.t)
@@ -170,9 +174,10 @@ let rec collectExpr super self (e : Typedtree.expression) =
                               funct = {exp_desc = Texp_ident (idArg2, _, _)};
                               args;
                             };
+                        idArg2 |> Common.Path.fromPathT |> mark_path_usage;
+                        };
                       };
                   };
-              };
         } )
     when Ident.name idArg = "arg"
          && Ident.name etaArg = "eta"
@@ -270,6 +275,15 @@ let rec processSignatureItem ~doTypes ~doValues ~moduleLoc ~path
         loc = moduleLoc;
         path = (id |> Ident.name |> Name.create) :: oldModulePath.path;
       };
+    (match moduleType with
+    | Mty_alias (_, pathAlias) ->
+      let currentPath = oldModulePath.path @ [!Common.currentModuleName] in
+      id |> Ident.name |> Name.create
+      |> add ~path:currentPath ~loc:moduleLoc;
+      ModulePath.addAlias
+        ~name:(id |> Ident.name |> Name.create)
+        ~path:(pathAlias |> Common.Path.fromPathT)
+    | _ -> ());
     let collect =
       match si with
       | Sig_modtype _ -> false
@@ -360,6 +374,15 @@ let traverseStructure ~doTypes ~doExternals =
     | _ -> ());
     let result = super.structure_item self structureItem in
     ModulePath.setCurrent oldModulePath;
+    (match structureItem.str_desc with
+    | Tstr_module {mb_id; mb_expr = {mod_desc = Tmod_ident (path_, _lid)}} ->
+      let currentPath = oldModulePath.path @ [!Common.currentModuleName] in
+      mb_id |> Ident.name |> Name.create
+      |> add ~path:currentPath ~loc:mb_loc;
+      ModulePath.addAlias
+        ~name:(mb_id |> Ident.name |> Name.create)
+        ~path:(path_ |> Common.Path.fromPathT)
+    | _ -> ());
     result
   in
   {super with expr; pat; structure_item; value_binding}
