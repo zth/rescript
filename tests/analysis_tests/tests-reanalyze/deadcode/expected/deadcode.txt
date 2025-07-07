@@ -1654,6 +1654,11 @@
   addValueReference Unison.res:39:25 --> Unison.res:17:4
   addTypeReference Unison.res:39:52 --> Unison.res:14:2
   addValueReference Unison.res:39:0 --> Unison.res:26:8
+  Scanning UnusedModuleAlias.cmt Source:UnusedModuleAlias.res
+
+  Warning Unused Module Alias
+  UnusedModuleAlias.res:5:0-5
+  Alias is a module alias that is never used
   Scanning UseImportJsValue.cmt Source:UseImportJsValue.res
   addValueDeclaration +useGetProp UseImportJsValue.res:2:4 path:+UseImportJsValue
   addValueDeclaration +useTypeImportedInOtherModule UseImportJsValue.res:5:4 path:+UseImportJsValue
@@ -4207,4 +4212,4 @@ File References
   <-- line 96
   type variant1Object = | @dead("variant1Object.R") R(payload)
   
-  Analysis reported 302 issues (Incorrect Dead Annotation:1, Warning Dead Exception:2, Warning Dead Module:21, Warning Dead Type:87, Warning Dead Value:173, Warning Dead Value With Side Effects:2, Warning Redundant Optional Argument:5, Warning Unused Argument:11)
+  Analysis reported 303 issues (Incorrect Dead Annotation:1, Warning Dead Exception:2, Warning Dead Module:21, Warning Dead Type:87, Warning Dead Value:173, Warning Dead Value With Side Effects:2, Warning Redundant Optional Argument:5, Warning Unused Argument:11, Warning Unused Module Alias:1)
