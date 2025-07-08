@@ -17,7 +17,7 @@ fi
 
 exit_watcher() {
   # kill watcher by removing lock file
-  rm lib/rewatch.lock
+  rm lib/rescript.lock
 }
 
 rewatch_bg watch > /dev/null 2>&1 &
@@ -25,7 +25,7 @@ success "Watcher Started"
 
 sleep 2
 
-if rewatch build | grep 'Could not start Rewatch:' &> /dev/null;
+if rewatch build | grep 'Could not start ReScript build:' &> /dev/null;
 then
   success "Lock is correctly set"
   exit_watcher
@@ -43,7 +43,7 @@ success "Watcher Started"
 
 sleep 2
 
-if cat tmp.txt | grep 'Could not start Rewatch:' &> /dev/null;
+if cat tmp.txt | grep 'Could not start ReScript build:' &> /dev/null;
 then
   error "Lock not removed correctly"
   exit_watcher
