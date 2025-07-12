@@ -25,6 +25,10 @@
 - Clean up `config.ml`. https://github.com/rescript-lang/rescript/pull/7636
 - Rewatch: simplify getting bsc path. https://github.com/rescript-lang/rescript/pull/7634
 
+#### :rocket: New Feature
+
+- Add experimental command to `rescript-tools` for extracting all ReScript code blocks from markdown, either a md-file directly, or inside of docstrings in ReScript code. https://github.com/rescript-lang/rescript/pull/7623
+
 # 12.0.0-beta.1
 
 #### :rocket: New Feature
