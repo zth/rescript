@@ -32,7 +32,7 @@
 #### :bug: Bug fix
 
 - Fix `typeof` parens on functions. https://github.com/rescript-lang/rescript/pull/7643
-
+- Add --dev flag to clean command. https://github.com/rescript-lang/rescript/pull/7622
 
 # 12.0.0-beta.1
 
