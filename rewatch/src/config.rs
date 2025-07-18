@@ -29,6 +29,15 @@ pub struct PackageSource {
     pub type_: Option<String>,
 }
 
+impl PackageSource {
+    fn is_type_dev(&self) -> bool {
+        match &self.type_ {
+            Some(type_) => type_ == "dev",
+            None => false,
+        }
+    }
+}
+
 impl Eq for PackageSource {}
 
 #[derive(Deserialize, Debug, Clone, PartialEq, Hash)]
@@ -97,6 +106,35 @@ impl Source {
                 subdirs: None,
                 type_: type_.to_owned(),
             },
+        }
+    }
+
+    fn find_is_type_dev_for_sub_folder(
+        &self,
+        relative_parent_path: &Path,
+        target_source_folder: &Path,
+    ) -> bool {
+        match &self {
+            Source::Shorthand(sub_folder) => {
+                relative_parent_path.join(Path::new(sub_folder)) == *target_source_folder
+            }
+            Source::Qualified(package_source) => {
+                // Note that we no longer check if type_ is dev of the nested subfolder.
+                // A parent was type:dev, so we assume all subfolders are as well.
+                let next_parent_path = relative_parent_path.join(Path::new(&package_source.dir));
+                if next_parent_path == *target_source_folder {
+                    return true;
+                };
+
+                match &package_source.subdirs {
+                    None => false,
+                    Some(Subdirs::Recurse(false)) => false,
+                    Some(Subdirs::Recurse(true)) => target_source_folder.starts_with(&next_parent_path),
+                    Some(Subdirs::Qualified(nested_sources)) => nested_sources.iter().any(|nested_source| {
+                        nested_source.find_is_type_dev_for_sub_folder(&next_parent_path, target_source_folder)
+                    }),
+                }
+            }
         }
     }
 }
@@ -182,7 +220,7 @@ pub type GenTypeConfig = serde_json::Value;
 
 /// # bsconfig.json representation
 /// This is tricky, there is a lot of ambiguity. This is probably incomplete.
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct Config {
     pub name: String,
     // In the case of monorepos, the root source won't necessarily have to have sources. It can
@@ -469,6 +507,48 @@ impl Config {
         spec.get_suffix()
             .or(self.suffix.clone())
             .unwrap_or(".js".to_string())
+    }
+
+    // TODO: needs improving!
+
+    pub fn find_is_type_dev_for_path(&self, relative_path: &Path) -> bool {
+        let relative_parent = match relative_path.parent() {
+            None => return false,
+            Some(parent) => Path::new(parent),
+        };
+
+        let package_sources = match self.sources.as_ref() {
+            None => vec![],
+            Some(OneOrMore::Single(Source::Shorthand(_))) => vec![],
+            Some(OneOrMore::Single(Source::Qualified(source))) => vec![source],
+            Some(OneOrMore::Multiple(multiple)) => multiple
+                .iter()
+                .filter_map(|source| match source {
+                    Source::Shorthand(_) => None,
+                    Source::Qualified(package_source) => Some(package_source),
+                })
+                .collect(),
+        };
+
+        package_sources.iter().any(|package_source| {
+            if !package_source.is_type_dev() {
+                false
+            } else {
+                let dir_path = Path::new(&package_source.dir);
+                if dir_path == relative_parent {
+                    return true;
+                };
+
+                match &package_source.subdirs {
+                    None => false,
+                    Some(Subdirs::Recurse(false)) => false,
+                    Some(Subdirs::Recurse(true)) => relative_path.starts_with(dir_path),
+                    Some(Subdirs::Qualified(sub_dirs)) => sub_dirs
+                        .iter()
+                        .any(|sub_dir| sub_dir.find_is_type_dev_for_sub_folder(dir_path, relative_parent)),
+                }
+            }
+        })
     }
 }
 
@@ -770,5 +850,106 @@ mod tests {
             config.bs_dev_dependencies,
             Some(vec!["@testrepo/main".to_string()])
         );
+    }
+
+    fn test_find_is_type_dev(source: OneOrMore<Source>, path: &Path, expected: bool) {
+        let config = Config {
+            name: String::from("testrepo"),
+            sources: Some(source),
+            ..Default::default()
+        };
+        let result = config.find_is_type_dev_for_path(path);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_find_is_type_dev_for_exact_match() {
+        test_find_is_type_dev(
+            OneOrMore::Single(Source::Qualified(PackageSource {
+                dir: String::from("src"),
+                subdirs: None,
+                type_: Some(String::from("dev")),
+            })),
+            Path::new("src/Foo.res"),
+            true,
+        )
+    }
+
+    #[test]
+    fn test_find_is_type_dev_for_none_dev() {
+        test_find_is_type_dev(
+            OneOrMore::Single(Source::Qualified(PackageSource {
+                dir: String::from("src"),
+                subdirs: None,
+                type_: None,
+            })),
+            Path::new("src/Foo.res"),
+            false,
+        )
+    }
+
+    #[test]
+    fn test_find_is_type_dev_for_multiple_sources() {
+        test_find_is_type_dev(
+            OneOrMore::Multiple(vec![Source::Qualified(PackageSource {
+                dir: String::from("src"),
+                subdirs: None,
+                type_: Some(String::from("dev")),
+            })]),
+            Path::new("src/Foo.res"),
+            true,
+        )
+    }
+
+    #[test]
+    fn test_find_is_type_dev_for_shorthand() {
+        test_find_is_type_dev(
+            OneOrMore::Multiple(vec![Source::Shorthand(String::from("src"))]),
+            Path::new("src/Foo.res"),
+            false,
+        )
+    }
+
+    #[test]
+    fn test_find_is_type_dev_for_recursive_folder() {
+        test_find_is_type_dev(
+            OneOrMore::Multiple(vec![Source::Qualified(PackageSource {
+                dir: String::from("src"),
+                subdirs: Some(Subdirs::Recurse(true)),
+                type_: Some(String::from("dev")),
+            })]),
+            Path::new("src/bar/Foo.res"),
+            true,
+        )
+    }
+
+    #[test]
+    fn test_find_is_type_dev_for_sub_folder() {
+        test_find_is_type_dev(
+            OneOrMore::Multiple(vec![Source::Qualified(PackageSource {
+                dir: String::from("src"),
+                subdirs: Some(Subdirs::Qualified(vec![Source::Qualified(PackageSource {
+                    dir: String::from("bar"),
+                    subdirs: None,
+                    type_: None,
+                })])),
+                type_: Some(String::from("dev")),
+            })]),
+            Path::new("src/bar/Foo.res"),
+            true,
+        )
+    }
+
+    #[test]
+    fn test_find_is_type_dev_for_sub_folder_shorthand() {
+        test_find_is_type_dev(
+            OneOrMore::Multiple(vec![Source::Qualified(PackageSource {
+                dir: String::from("src"),
+                subdirs: Some(Subdirs::Qualified(vec![Source::Shorthand(String::from("bar"))])),
+                type_: Some(String::from("dev")),
+            })]),
+            Path::new("src/bar/Foo.res"),
+            true,
+        )
     }
 }

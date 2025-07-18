@@ -44,6 +44,7 @@
 - Fix inside comment printing for empty dict. https://github.com/rescript-lang/rescript/pull/7654
 - Fix I/O error message when trying to extract extra info from non-existing file. https://github.com/rescript-lang/rescript/pull/7656
 - Fix fatal error when JSX expression used without configuring JSX in rescript.json. https://github.com/rescript-lang/rescript/pull/7656
+- Rewatch: Only allow access to `"bs-dev-dependencies"` from `"type": "dev"` source files. https://github.com/rescript-lang/rescript/pull/7650
 
 # 12.0.0-beta.1
 
