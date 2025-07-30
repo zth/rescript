@@ -24,6 +24,7 @@
 
 - Fix error message that falsely suggested using coercion when it wouldn't work. https://github.com/rescript-lang/rescript/pull/7721
 - Fix formatter removes () from functor type. https://github.com/rescript-lang/rescript/pull/7735
+- Rewatch: don't compile dev-dependencies of non local dependencies with `--dev`. https://github.com/rescript-lang/rescript/pull/7736
 
 # 12.0.0-beta.3
 
