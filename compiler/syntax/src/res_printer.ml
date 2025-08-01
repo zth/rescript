@@ -40,6 +40,13 @@ let add_braces doc =
 
 let add_async doc = Doc.concat [Doc.text "async "; doc]
 
+let has_inline_type_definitions type_declarations =
+  type_declarations
+  |> List.find_opt (fun (td : Parsetree.type_declaration) ->
+         Res_parsetree_viewer.has_inline_record_definition_attribute
+           td.ptype_attributes)
+  |> Option.is_some
+
 let get_first_leading_comment tbl loc =
   match Hashtbl.find tbl.CommentTable.leading loc with
   | comment :: _ -> Some comment
@@ -587,29 +594,7 @@ and print_structure_item ~state (si : Parsetree.structure_item) cmt_tbl =
       | Asttypes.Recursive -> Doc.text "rec "
     in
     print_value_bindings ~state ~rec_flag value_bindings cmt_tbl
-  | Pstr_type (Recursive, type_declarations)
-    when type_declarations
-         |> List.find_opt (fun (td : Parsetree.type_declaration) ->
-                Res_parsetree_viewer.has_inline_record_definition_attribute
-                  td.ptype_attributes)
-         |> Option.is_some ->
-    let inline_record_definitions, regular_declarations =
-      type_declarations
-      |> List.partition (fun (td : Parsetree.type_declaration) ->
-             Res_parsetree_viewer.has_inline_record_definition_attribute
-               td.ptype_attributes)
-    in
-    print_type_declarations ~inline_record_definitions ~state
-      ~rec_flag:
-        (if List.length regular_declarations > 1 then Doc.text "rec "
-         else Doc.nil)
-      regular_declarations cmt_tbl
   | Pstr_type (rec_flag, type_declarations) ->
-    let rec_flag =
-      match rec_flag with
-      | Asttypes.Nonrecursive -> Doc.nil
-      | Asttypes.Recursive -> Doc.text "rec "
-    in
     print_type_declarations ~state ~rec_flag type_declarations cmt_tbl
   | Pstr_primitive value_description ->
     print_value_description ~state value_description cmt_tbl
@@ -985,11 +970,6 @@ and print_signature_item ~state (si : Parsetree.signature_item) cmt_tbl =
   | Parsetree.Psig_value value_description ->
     print_value_description ~state value_description cmt_tbl
   | Psig_type (rec_flag, type_declarations) ->
-    let rec_flag =
-      match rec_flag with
-      | Asttypes.Nonrecursive -> Doc.nil
-      | Asttypes.Recursive -> Doc.text "rec "
-    in
     print_type_declarations ~state ~rec_flag type_declarations cmt_tbl
   | Psig_typext type_extension ->
     print_type_extension ~state type_extension cmt_tbl
@@ -1191,13 +1171,39 @@ and print_value_description ~state value_description cmt_tbl =
           else Doc.nil);
        ])
 
-and print_type_declarations ?inline_record_definitions ~state ~rec_flag
-    type_declarations cmt_tbl =
-  print_listi
-    ~get_loc:(fun n -> n.Parsetree.ptype_loc)
-    ~nodes:type_declarations
-    ~print:(print_type_declaration2 ?inline_record_definitions ~state ~rec_flag)
-    cmt_tbl
+and print_type_declarations ~state ~rec_flag type_declarations cmt_tbl =
+  if has_inline_type_definitions type_declarations then
+    let inline_record_definitions, regular_declarations =
+      type_declarations
+      |> List.partition (fun (td : Parsetree.type_declaration) ->
+             Res_parsetree_viewer.has_inline_record_definition_attribute
+               td.ptype_attributes)
+    in
+    let adjusted_rec_flag =
+      match rec_flag with
+      | Recursive ->
+        if List.length regular_declarations > 1 then Doc.text "rec "
+        else Doc.nil
+      | Nonrecursive -> Doc.nil
+    in
+    print_listi
+      ~get_loc:(fun n -> n.Parsetree.ptype_loc)
+      ~nodes:regular_declarations
+      ~print:
+        (print_type_declaration2 ~inline_record_definitions ~state
+           ~rec_flag:adjusted_rec_flag)
+      cmt_tbl
+  else
+    print_listi
+      ~get_loc:(fun n -> n.Parsetree.ptype_loc)
+      ~nodes:type_declarations
+      ~print:
+        (print_type_declaration2 ~state
+           ~rec_flag:
+             (match rec_flag with
+             | Nonrecursive -> Doc.nil
+             | Recursive -> Doc.text "rec "))
+      cmt_tbl
 
 (*
  * type_declaration = {
@@ -1458,13 +1464,14 @@ and print_type_param ~state (param : Parsetree.core_type * Asttypes.variance)
   in
   Doc.concat [printed_variance; print_typ_expr ~state typ cmt_tbl]
 
-and print_record_declaration ?inline_record_definitions ~state
-    (lds : Parsetree.label_declaration list) cmt_tbl =
+and print_record_declaration ?check_break_from_loc ?inline_record_definitions
+    ~state (lds : Parsetree.label_declaration list) cmt_tbl =
   let force_break =
-    match (lds, List.rev lds) with
-    | first :: _, last :: _ ->
+    match (check_break_from_loc, lds, List.rev lds) with
+    | Some loc, _, _ -> loc.Location.loc_start.pos_lnum < loc.loc_end.pos_lnum
+    | _, first :: _, last :: _ ->
       first.pld_loc.loc_start.pos_lnum < last.pld_loc.loc_end.pos_lnum
-    | _ -> false
+    | _, _, _ -> false
   in
   Doc.breakable_group ~force_break
     (Doc.concat
@@ -1799,8 +1806,8 @@ and print_typ_expr ?inline_record_definitions ~(state : State.t)
         inline_record_definitions
         |> find_inline_record_definition inline_record_name
       with
-      | Some {ptype_kind = Ptype_record lds} ->
-        print_record_declaration
+      | Some {ptype_kind = Ptype_record lds; ptype_loc} ->
+        print_record_declaration ~check_break_from_loc:ptype_loc
           ~inline_record_definitions:(inline_record_definitions |> Option.get)
           ~state lds cmt_tbl
       | _ -> assert false)
