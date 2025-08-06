@@ -228,6 +228,7 @@ type deadWarning =
   | WarningDeadValue
   | WarningDeadValueWithSideEffects
   | IncorrectDeadAnnotation
+  | WarningUnusedModuleAlias
 
 type lineAnnotation = (decl * line) option
 
