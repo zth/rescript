@@ -21,6 +21,7 @@
 - Add new Stdlib helpers: `String.capitalize`, `String.isEmpty`, `Dict.size`, `Dict.isEmpty`, `Array.isEmpty`, `Map.isEmpty`, `Set.isEmpty`. https://github.com/rescript-lang/rescript/pull/7516
 
 #### :bug: Bug fix
+- Fix issue with ast conversion (for ppx use) on functions with attributes on first argument. https://github.com/rescript-lang/rescript/pull/7761
 
 #### :memo: Documentation
 
