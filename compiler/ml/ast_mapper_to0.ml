@@ -495,7 +495,9 @@ module E = struct
              jsx_unary_element_tag_name = tag_name;
              jsx_unary_element_props = props;
            }) ->
-      let tag_ident = map_loc sub tag_name in
+      let tag_ident : Longident.t Location.loc =
+        tag_name |> Location.map_loc Ast_helper.Jsx.longident_of_jsx_tag_name
+      in
       let props = map_jsx_props sub props in
       let children_expr =
         let loc =
@@ -525,7 +527,9 @@ module E = struct
              jsx_container_element_props = props;
              jsx_container_element_children = children;
            }) ->
-      let tag_ident = map_loc sub tag_name in
+      let tag_ident : Longident.t Location.loc =
+        tag_name |> Location.map_loc Ast_helper.Jsx.longident_of_jsx_tag_name
+      in
       let props = map_jsx_props sub props in
       let children_expr = map_jsx_children sub loc children in
       apply ~loc ~attrs:(jsx_attr sub :: attrs) (ident tag_ident)
