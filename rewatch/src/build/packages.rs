@@ -2,9 +2,11 @@ use super::build_types::*;
 use super::namespaces;
 use super::packages;
 use crate::config;
+use crate::config::Config;
 use crate::helpers;
 use crate::helpers::StrippedVerbatimPath;
 use crate::helpers::emojis::*;
+use crate::project_context::{MonoRepoContext, ProjectContext};
 use ahash::{AHashMap, AHashSet};
 use anyhow::{Result, anyhow};
 use console::style;
@@ -237,43 +239,27 @@ fn get_source_dirs(source: config::Source, sub_path: Option<PathBuf>) -> AHashSe
     source_folders
 }
 
-pub fn read_config(package_dir: &Path) -> Result<config::Config> {
+pub fn read_config(package_dir: &Path) -> Result<Config> {
     let rescript_json_path = package_dir.join("rescript.json");
     let bsconfig_json_path = package_dir.join("bsconfig.json");
 
     if Path::new(&rescript_json_path).exists() {
-        config::Config::new(&rescript_json_path)
+        Config::new(&rescript_json_path)
     } else {
-        config::Config::new(&bsconfig_json_path)
+        Config::new(&bsconfig_json_path)
     }
 }
 
-pub fn read_dependency(
-    package_name: &str,
-    parent_path: &Path,
-    project_root: &Path,
-    workspace_root: &Option<PathBuf>,
-) -> Result<PathBuf, String> {
-    let path_from_parent = helpers::package_path(parent_path, package_name);
-    let path_from_project_root = helpers::package_path(project_root, package_name);
-    let maybe_path_from_workspace_root = workspace_root
-        .as_ref()
-        .map(|workspace_root| helpers::package_path(workspace_root, package_name));
-
-    let path = match (
-        path_from_parent,
-        path_from_project_root,
-        maybe_path_from_workspace_root,
-    ) {
-        (path_from_parent, _, _) if path_from_parent.exists() => Ok(path_from_parent),
-        (_, path_from_project_root, _) if path_from_project_root.exists() => Ok(path_from_project_root),
-        (_, _, Some(path_from_workspace_root)) if path_from_workspace_root.exists() => {
-            Ok(path_from_workspace_root)
-        }
-        _ => Err(format!(
+pub fn read_dependency(package_name: &str, project_context: &ProjectContext) -> Result<PathBuf, String> {
+    // root folder + node_modules + package_name
+    let path_from_root = helpers::package_path(project_context.get_root_path(), package_name);
+    let path = (if path_from_root.exists() {
+        Ok(path_from_root)
+    } else {
+        Err(format!(
             "The package \"{package_name}\" is not found (are node_modules up-to-date?)..."
-        )),
-    }?;
+        ))
+    })?;
 
     let canonical_path = match path
         .canonicalize()
@@ -299,17 +285,15 @@ pub fn read_dependency(
 ///    recursively continues operation for their dependencies as well.
 fn read_dependencies(
     registered_dependencies_set: &mut AHashSet<String>,
-    parent_config: &config::Config,
-    parent_path: &Path,
-    project_root: &Path,
-    workspace_root: &Option<PathBuf>,
+    project_context: &ProjectContext,
+    package_config: &Config,
     show_progress: bool,
     build_dev_deps: bool,
 ) -> Vec<Dependency> {
-    let mut dependencies = parent_config.dependencies.to_owned().unwrap_or_default();
+    let mut dependencies = package_config.dependencies.to_owned().unwrap_or_default();
 
     // Concatenate dev dependencies if build_dev_deps is true
-    if build_dev_deps && let Some(dev_deps) = parent_config.dev_dependencies.to_owned() {
+    if build_dev_deps && let Some(dev_deps) = package_config.dev_dependencies.to_owned() {
         dependencies.extend(dev_deps);
     }
 
@@ -328,7 +312,7 @@ fn read_dependencies(
         .par_iter()
         .map(|package_name| {
             let (config, canonical_path) =
-                match read_dependency(package_name, parent_path, project_root, workspace_root) {
+                match read_dependency(package_name, project_context) {
                     Err(error) => {
                         if show_progress {
                             println!(
@@ -339,7 +323,7 @@ fn read_dependencies(
                             );
                         }
 
-                        let parent_path_str = parent_path.to_string_lossy();
+                        let parent_path_str = project_context.get_root_path().to_string_lossy();
                         log::error!(
                             "We could not build package tree reading dependency '{package_name}', at path '{parent_path_str}'. Error: {error}",
                         );
@@ -350,7 +334,7 @@ fn read_dependencies(
                         match read_config(&canonical_path) {
                             Ok(config) => (config, canonical_path),
                             Err(error) => {
-                                let parent_path_str = parent_path.to_string_lossy();
+                                let parent_path_str = project_context.get_root_path().to_string_lossy();
                                 log::error!(
                                     "We could not build package tree  '{package_name}', at path '{parent_path_str}'. Error: {error}",
                                 );
@@ -361,16 +345,27 @@ fn read_dependencies(
                 };
 
             let is_local_dep = {
-                canonical_path.starts_with(project_root)
-                    && !canonical_path.components().any(|c| c.as_os_str() == "node_modules")
+                match &project_context.monorepo_context {
+                    None => project_context.current_config.name.as_str() == package_name
+                    ,
+                    Some(MonoRepoContext::MonorepoRoot {
+                             local_dependencies,
+                             local_dev_dependencies,
+                         }) => {
+                        local_dependencies.contains(package_name) || local_dev_dependencies.contains(package_name)
+                    },
+                    Some(MonoRepoContext::MonorepoPackage {
+                             parent_config,
+                         }) => {
+                        helpers::is_local_package(&parent_config.path, &canonical_path)
+                    }
+                }
             };
 
             let dependencies = read_dependencies(
                 &mut registered_dependencies_set.to_owned(),
+                project_context,
                 &config,
-                &canonical_path,
-                project_root,
-                workspace_root,
                 show_progress,
                 is_local_dep && build_dev_deps,
             );
@@ -380,7 +375,7 @@ fn read_dependencies(
                 config,
                 path: canonical_path,
                 dependencies,
-                is_local_dep
+                is_local_dep,
             }
         })
         .collect()
@@ -483,25 +478,28 @@ This inconsistency will cause issues with package resolution.\n",
 }
 
 fn read_packages(
-    project_root: &Path,
-    workspace_root: &Option<PathBuf>,
+    project_context: &ProjectContext,
     show_progress: bool,
     build_dev_deps: bool,
 ) -> Result<AHashMap<String, Package>> {
-    let root_config = read_config(project_root)?;
-
     // Store all packages and completely deduplicate them
     let mut map: AHashMap<String, Package> = AHashMap::new();
-    let root_package = make_package(root_config.to_owned(), project_root, true, true);
-    map.insert(root_package.name.to_string(), root_package);
+    let current_package = {
+        let config = &project_context.current_config;
+        let folder = config
+            .path
+            .parent()
+            .ok_or_else(|| anyhow!("Could not the read parent folder or a rescript.json file"))?;
+        make_package(config.to_owned(), folder, true, true)
+    };
+
+    map.insert(current_package.name.to_string(), current_package);
 
     let mut registered_dependencies_set: AHashSet<String> = AHashSet::new();
     let dependencies = flatten_dependencies(read_dependencies(
         &mut registered_dependencies_set,
-        &root_config,
-        project_root,
-        project_root,
-        workspace_root,
+        project_context,
+        &project_context.current_config,
         show_progress,
         build_dev_deps,
     ));
@@ -617,15 +615,14 @@ fn extend_with_children(
 /// 2. Take the (by then deduplicated) packages, and find all the '.res' and
 ///    interface files.
 ///
-/// The two step process is there to reduce IO overhead
+/// The two step process is there to reduce IO overhead.
 pub fn make(
     filter: &Option<regex::Regex>,
-    root_folder: &Path,
-    workspace_root: &Option<PathBuf>,
+    project_context: &ProjectContext,
     show_progress: bool,
     build_dev_deps: bool,
 ) -> Result<AHashMap<String, Package>> {
-    let map = read_packages(root_folder, workspace_root, show_progress, build_dev_deps)?;
+    let map = read_packages(project_context, show_progress, build_dev_deps)?;
 
     /* Once we have the deduplicated packages, we can add the source files for each - to minimize
      * the IO */
@@ -648,11 +645,9 @@ pub fn parse_packages(build_state: &mut BuildState) {
             let bs_build_path = package.get_ocaml_build_path();
             helpers::create_path(&build_path_abs);
             helpers::create_path(&bs_build_path);
-            let root_config = build_state
-                .get_package(&build_state.root_config_name)
-                .expect("cannot find root config");
+            let root_config = build_state.get_root_config();
 
-            root_config.config.get_package_specs().iter().for_each(|spec| {
+            root_config.get_package_specs().iter().for_each(|spec| {
                 if !spec.in_source {
                     // we don't want to calculate this if we don't have out of source specs
                     // we do this twice, but we almost never have multiple package specs
@@ -996,6 +991,7 @@ mod test {
                 bs_deps: args.bs_deps,
                 build_dev_deps: args.build_dev_deps,
                 allowed_dependents: args.allowed_dependents,
+                path: PathBuf::from("./something/rescript.json"),
             }),
             source_folders: AHashSet::new(),
             source_files: None,

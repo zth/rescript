@@ -4,15 +4,15 @@ cd ../testrepo
 bold "Test: It should format all files"
 
 git diff --name-only ./
-error_output=$("$REWATCH_EXECUTABLE" format --all)
+error_output=$("$REWATCH_EXECUTABLE" format)
 git_diff_file_count=$(git diff --name-only ./ | wc -l | xargs)
-if [ $? -eq 0 ] && [ $git_diff_file_count -eq 8 ];
+if [ $? -eq 0 ] && [ $git_diff_file_count -eq 9 ];
 then
     success "Test package formatted. Got $git_diff_file_count changed files."
     git restore .
 else
     error "Error formatting test package"
-    echo "Expected 8 files to be changed, got $git_diff_file_count"
+    echo "Expected 9 files to be changed, got $git_diff_file_count"
     echo $error_output
     exit 1
 fi
@@ -39,6 +39,36 @@ then
     success "Stdin formatted successfully"
 else
     error "Error formatting from stdin"
+    echo $error_output
+    exit 1
+fi
+
+bold "Test: It should format only the current project"
+
+error_output=$(cd packages/file-casing && "../../$REWATCH_EXECUTABLE" format)
+git_diff_file_count=$(git diff --name-only ./ | wc -l | xargs)
+if [ $? -eq 0 ] && [ $git_diff_file_count -eq 2 ];
+then
+    success "file-casing formatted"
+    git restore .
+else
+    error "Error formatting current project file-casing"
+     echo "Expected 2 files to be changed, got $git_diff_file_count"
+    echo $error_output
+    exit 1
+fi
+
+bold "Test: it should format dev package as well"
+
+error_output=$("$REWATCH_EXECUTABLE" format --dev)
+git_diff_file_count=$(git diff --name-only ./ | wc -l | xargs)
+if [ $? -eq 0 ] && [ $git_diff_file_count -eq 10 ];
+then
+    success "All packages (including dev) were formatted. Got $git_diff_file_count changed files."
+    git restore .
+else
+    error "Error formatting test package"
+    echo "Expected 9 files to be changed, got $git_diff_file_count"
     echo $error_output
     exit 1
 fi

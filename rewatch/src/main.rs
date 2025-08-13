@@ -93,10 +93,10 @@ fn main() -> Result<()> {
         }
         cli::Command::Format {
             stdin,
-            all,
             check,
             files,
-        } => format::format(stdin, all, check, files),
+            dev,
+        } => format::format(stdin, check, files, dev.dev),
     }
 }
 

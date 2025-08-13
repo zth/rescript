@@ -1,7 +1,10 @@
 use super::build_types::*;
 use super::packages;
+use crate::build::packages::Package;
+use crate::config::Config;
 use crate::helpers;
 use crate::helpers::emojis::*;
+use crate::project_context::ProjectContext;
 use ahash::AHashSet;
 use anyhow::Result;
 use console::style;
@@ -28,10 +31,10 @@ fn remove_iast(package: &packages::Package, source_file: &Path) {
     ));
 }
 
-fn remove_mjs_file(source_file: &Path, suffix: &String) {
+fn remove_mjs_file(source_file: &Path, suffix: &str) {
     let _ = std::fs::remove_file(source_file.with_extension(
         // suffix.to_string includes the ., so we need to remove it
-        &suffix.to_string()[1..],
+        &suffix[1..],
     ));
 }
 
@@ -58,31 +61,32 @@ pub fn remove_compile_assets(package: &packages::Package, source_file: &Path) {
     }
 }
 
-fn clean_source_files(build_state: &BuildState, root_package: &packages::Package) {
+fn clean_source_files(build_state: &BuildState, root_config: &Config, suffix: &str) {
     // get all rescript file locations
     let rescript_file_locations = build_state
         .modules
         .values()
         .filter_map(|module| match &module.source_type {
             SourceType::SourceFile(source_file) => {
-                let package = build_state.packages.get(&module.package_name).unwrap();
-                Some(
-                    root_package
-                        .config
+                build_state.packages.get(&module.package_name).map(|package| {
+                    root_config
                         .get_package_specs()
-                        .iter()
+                        .into_iter()
                         .filter_map(|spec| {
                             if spec.in_source {
                                 Some((
                                     package.path.join(&source_file.implementation.path),
-                                    root_package.config.get_suffix(spec),
+                                    match spec.suffix {
+                                        None => suffix.to_owned(),
+                                        Some(suffix) => suffix,
+                                    },
                                 ))
                             } else {
                                 None
                             }
                         })
-                        .collect::<Vec<(PathBuf, String)>>(),
-                )
+                        .collect::<Vec<(PathBuf, String)>>()
+                })
             }
             _ => None,
         })
@@ -326,17 +330,10 @@ pub fn cleanup_after_build(build_state: &BuildState) {
     });
 }
 
-pub fn clean(path: &Path, show_progress: bool, snapshot_output: bool, build_dev_deps: bool) -> Result<()> {
-    let project_root = helpers::get_abs_path(path);
-    let workspace_root = helpers::get_workspace_root(&project_root);
-    let packages = packages::make(
-        &None,
-        &project_root,
-        &workspace_root,
-        show_progress,
-        build_dev_deps,
-    )?;
-    let root_config_name = packages::read_package_name(&project_root)?;
+pub fn clean(path: &Path, show_progress: bool, snapshot_output: bool, clean_dev_deps: bool) -> Result<()> {
+    let project_context = ProjectContext::new(path)?;
+
+    let packages = packages::make(&None, &project_context, show_progress, clean_dev_deps)?;
     let bsc_path = helpers::get_bsc();
 
     let timing_clean_compiler_assets = Instant::now();
@@ -348,30 +345,11 @@ pub fn clean(path: &Path, show_progress: bool, snapshot_output: bool, build_dev_
         );
         let _ = std::io::stdout().flush();
     };
-    packages.iter().for_each(|(_, package)| {
-        if show_progress {
-            if snapshot_output {
-                println!("Cleaning {}", package.name)
-            } else {
-                print!(
-                    "{}{} {}Cleaning {}...",
-                    LINE_CLEAR,
-                    style("[1/2]").bold().dim(),
-                    SWEEP,
-                    package.name
-                );
-            }
-            let _ = std::io::stdout().flush();
-        }
 
-        let path_str = package.get_build_path();
-        let path = std::path::Path::new(&path_str);
-        let _ = std::fs::remove_dir_all(path);
+    for (_, package) in &packages {
+        clean_package(show_progress, snapshot_output, package)
+    }
 
-        let path_str = package.get_ocaml_build_path();
-        let path = std::path::Path::new(&path_str);
-        let _ = std::fs::remove_dir_all(path);
-    });
     let timing_clean_compiler_assets_elapsed = timing_clean_compiler_assets.elapsed();
 
     if !snapshot_output && show_progress {
@@ -386,20 +364,10 @@ pub fn clean(path: &Path, show_progress: bool, snapshot_output: bool, build_dev_
     }
 
     let timing_clean_mjs = Instant::now();
-    let mut build_state = BuildState::new(
-        project_root.to_owned(),
-        root_config_name,
-        packages,
-        workspace_root,
-        bsc_path,
-    );
+    let mut build_state = BuildState::new(project_context, packages, bsc_path);
     packages::parse_packages(&mut build_state);
-    let root_package = build_state
-        .packages
-        .get(&build_state.root_config_name)
-        .expect("Could not find root package");
-
-    let suffix = root_package.config.suffix.as_deref().unwrap_or(".res.mjs");
+    let root_config = build_state.get_root_config();
+    let suffix = build_state.project_context.get_suffix();
 
     if !snapshot_output && show_progress {
         println!(
@@ -411,7 +379,7 @@ pub fn clean(path: &Path, show_progress: bool, snapshot_output: bool, build_dev_
         let _ = std::io::stdout().flush();
     }
 
-    clean_source_files(&build_state, root_package);
+    clean_source_files(&build_state, root_config, &suffix);
     let timing_clean_mjs_elapsed = timing_clean_mjs.elapsed();
 
     if !snapshot_output && show_progress {
@@ -427,4 +395,29 @@ pub fn clean(path: &Path, show_progress: bool, snapshot_output: bool, build_dev_
     }
 
     Ok(())
+}
+
+fn clean_package(show_progress: bool, snapshot_output: bool, package: &Package) {
+    if show_progress {
+        if snapshot_output {
+            println!("Cleaning {}", package.name)
+        } else {
+            print!(
+                "{}{} {}Cleaning {}...",
+                LINE_CLEAR,
+                style("[1/2]").bold().dim(),
+                SWEEP,
+                package.name
+            );
+        }
+        let _ = std::io::stdout().flush();
+    }
+
+    let path_str = package.get_build_path();
+    let path = std::path::Path::new(&path_str);
+    let _ = std::fs::remove_dir_all(path);
+
+    let path_str = package.get_ocaml_build_path();
+    let path = std::path::Path::new(&path_str);
+    let _ = std::fs::remove_dir_all(path);
 }

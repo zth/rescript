@@ -1,10 +1,11 @@
 use super::build_types::*;
 use super::logs;
 use super::namespaces;
-use super::packages;
+use crate::build::packages::Package;
 use crate::config;
-use crate::config::OneOrMore;
+use crate::config::{Config, OneOrMore};
 use crate::helpers;
+use crate::project_context::ProjectContext;
 use ahash::AHashSet;
 use log::debug;
 use rayon::prelude::*;
@@ -38,8 +39,6 @@ pub fn generate_asts(
                 }
 
                 SourceType::SourceFile(source_file) => {
-                    let root_package = build_state.get_package(&build_state.root_config_name).unwrap();
-
                     let (ast_result, iast_result, dirty) = if source_file.implementation.parse_dirty
                         || source_file
                             .interface
@@ -50,21 +49,15 @@ pub fn generate_asts(
                         inc();
                         let ast_result = generate_ast(
                             package.to_owned(),
-                            root_package.to_owned(),
                             &source_file.implementation.path.to_owned(),
-                            &build_state.bsc_path,
-                            &build_state.workspace_root,
+                            build_state,
                         );
 
                         let iast_result = match source_file.interface.as_ref().map(|i| i.path.to_owned()) {
-                            Some(interface_file_path) => generate_ast(
-                                package.to_owned(),
-                                root_package.to_owned(),
-                                &interface_file_path.to_owned(),
-                                &build_state.bsc_path,
-                                &build_state.workspace_root,
-                            )
-                            .map(Some),
+                            Some(interface_file_path) => {
+                                generate_ast(package.to_owned(), &interface_file_path.to_owned(), build_state)
+                                    .map(Some)
+                            }
                             _ => Ok(None),
                         };
 
@@ -240,29 +233,25 @@ pub fn generate_asts(
 }
 
 pub fn parser_args(
-    config: &config::Config,
-    root_config: &config::Config,
+    project_context: &ProjectContext,
+    package_config: &Config,
     filename: &Path,
-    workspace_root: &Option<PathBuf>,
-    root_path: &Path,
     contents: &str,
 ) -> (PathBuf, Vec<String>) {
+    let root_config = project_context.get_root_config();
     let file = &filename;
     let ast_path = helpers::get_ast_path(file);
+    let node_modules_path = project_context.get_root_path().join("node_modules");
     let ppx_flags = config::flatten_ppx_flags(
-        &if let Some(workspace_root) = workspace_root {
-            workspace_root.join("node_modules")
-        } else {
-            root_path.join("node_modules")
-        },
-        &filter_ppx_flags(&config.ppx_flags, contents),
-        &config.name,
+        node_modules_path.as_path(),
+        &filter_ppx_flags(&package_config.ppx_flags, contents),
+        &package_config.name,
     );
     let jsx_args = root_config.get_jsx_args();
     let jsx_module_args = root_config.get_jsx_module_args();
     let jsx_mode_args = root_config.get_jsx_mode_args();
     let jsx_preserve_args = root_config.get_jsx_preserve_args();
-    let bsc_flags = config::flatten_flags(&config.compiler_flags);
+    let bsc_flags = config::flatten_flags(&package_config.compiler_flags);
 
     let file = PathBuf::from("..").join("..").join(file);
 
@@ -288,24 +277,16 @@ pub fn parser_args(
 }
 
 fn generate_ast(
-    package: packages::Package,
-    root_package: packages::Package,
+    package: Package,
     filename: &Path,
-    bsc_path: &PathBuf,
-    workspace_root: &Option<PathBuf>,
+    build_state: &BuildState,
 ) -> Result<(PathBuf, Option<helpers::StdErr>), String> {
     let file_path = PathBuf::from(&package.path).join(filename);
     let contents = helpers::read_file(&file_path).expect("Error reading file");
 
     let build_path_abs = package.get_build_path();
-    let (ast_path, parser_args) = parser_args(
-        &package.config,
-        &root_package.config,
-        filename,
-        workspace_root,
-        &root_package.path,
-        &contents,
-    );
+    let (ast_path, parser_args) =
+        parser_args(&build_state.project_context, &package.config, filename, &contents);
 
     // generate the dir of the ast_path (it mirrors the source file dir)
     let ast_parent_path = package.get_build_path().join(ast_path.parent().unwrap());
@@ -313,7 +294,7 @@ fn generate_ast(
 
     /* Create .ast */
     let result = match Some(
-        Command::new(bsc_path)
+        Command::new(&build_state.bsc_path)
             .current_dir(&build_path_abs)
             .args(parser_args)
             .output()
