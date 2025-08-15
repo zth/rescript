@@ -250,13 +250,50 @@ pub fn read_config(package_dir: &Path) -> Result<Config> {
     }
 }
 
-pub fn read_dependency(package_name: &str, project_context: &ProjectContext) -> Result<PathBuf, String> {
+pub fn read_dependency(
+    package_name: &str,
+    package_config: &Config,
+    project_context: &ProjectContext,
+) -> Result<PathBuf> {
+    // package folder + node_modules + package_name
+    // This can happen in the following scenario:
+    // The ProjectContext has a MonoRepoContext::MonorepoRoot.
+    // We are reading a dependency from the root package.
+    // And that local dependency has a hoisted dependency.
+    let path_from_current_package = package_config
+        .path
+        .parent()
+        .ok_or_else(|| {
+            anyhow!(
+                "Expected {} to have a parent folder",
+                package_config.path.to_string_lossy()
+            )
+        })
+        .map(|parent_path| helpers::package_path(parent_path, package_name))?;
+
+    // current folder + node_modules + package_name
+    let path_from_current_config = project_context
+        .current_config
+        .path
+        .parent()
+        .ok_or_else(|| {
+            anyhow!(
+                "Expected {} to have a parent folder",
+                project_context.current_config.path.to_string_lossy()
+            )
+        })
+        .map(|parent_path| helpers::package_path(parent_path, package_name))?;
+
     // root folder + node_modules + package_name
     let path_from_root = helpers::package_path(project_context.get_root_path(), package_name);
-    let path = (if path_from_root.exists() {
+    let path = (if path_from_current_package.exists() {
+        Ok(path_from_current_package)
+    } else if path_from_current_config.exists() {
+        Ok(path_from_current_config)
+    } else if path_from_root.exists() {
         Ok(path_from_root)
     } else {
-        Err(format!(
+        Err(anyhow!(
             "The package \"{package_name}\" is not found (are node_modules up-to-date?)..."
         ))
     })?;
@@ -266,7 +303,7 @@ pub fn read_dependency(package_name: &str, project_context: &ProjectContext) -> 
         .map(StrippedVerbatimPath::to_stripped_verbatim_path)
     {
         Ok(canonical_path) => Ok(canonical_path),
-        Err(e) => Err(format!(
+        Err(e) => Err(anyhow!(
             "Failed canonicalizing the package \"{}\" path \"{}\" (are node_modules up-to-date?)...\nMore details: {}",
             package_name,
             path.to_string_lossy(),
@@ -312,7 +349,7 @@ fn read_dependencies(
         .par_iter()
         .map(|package_name| {
             let (config, canonical_path) =
-                match read_dependency(package_name, project_context) {
+                match read_dependency(package_name, package_config, project_context) {
                     Err(error) => {
                         if show_progress {
                             println!(
