@@ -26,6 +26,7 @@
 
 - Preserve `@as(...)` decorator on record fields when creating interface. https://github.com/rescript-lang/rescript/pull/7779
 - Fix parse error with nested record types and attributes on the field name that has the nested record type. https://github.com/rescript-lang/rescript/pull/7781
+- Fix ppx resolution with package inside monorepo. https://github.com/rescript-lang/rescript/pull/7776
 
 #### :memo: Documentation
 
