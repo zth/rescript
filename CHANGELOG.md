@@ -26,6 +26,8 @@
 
 #### :nail_care: Polish
 
+- Make parser less strict around leading attributes. https://github.com/rescript-lang/rescript/pull/7787
+
 #### :house: Internal
 
 - Build runtime with rewatch on Windows, too. https://github.com/rescript-lang/rescript/pull/7794
