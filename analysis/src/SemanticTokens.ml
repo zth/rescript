@@ -247,12 +247,32 @@ let command ~debug ~emitter ~path =
     match e.pexp_desc with
     | Pexp_ident {txt = lid; loc} ->
       if lid <> Lident "not" then
-        if not loc.loc_ghost then
-          emitter
-          |> emitLongident ~pos:(Loc.start loc)
-               ~posEnd:(Some (Loc.end_ loc))
-               ~lid ~debug;
-      Ast_iterator.default_iterator.expr iterator e
+        if not loc.loc_ghost then (
+          (* Don't emit semantic tokens for identifiers not present in source code *)
+          let should_emit =
+            match lid with
+            (* Array spread (`...`) is converted to `Belt.Array.concatMany` with `@res.spread` decorator *)
+            | Ldot (Ldot (Lident "Belt", "Array"), "concatMany") ->
+              let has_spread_attr =
+                e.pexp_attributes
+                |> List.exists (fun ({Location.txt}, _) -> txt = "res.spread")
+              in
+              not has_spread_attr
+            (* Dict syntax (`dict{...}`) is converted to `Primitive_dict.make` *)
+            | Ldot (Lident "Primitive_dict", "make") -> false
+            | Lident "Primitive_dict" -> false
+            (* Array access (`arr[index]`) is converted to `Array.get` *)
+            | Ldot (Lident "Array", "get") -> false
+            (* Array mutation (`arr[index]`) is converted to `Array.set` *)
+            | Ldot (Lident "Array", "set") -> false
+            | _ -> true
+          in
+          if should_emit then
+            emitter
+            |> emitLongident ~pos:(Loc.start loc)
+                 ~posEnd:(Some (Loc.end_ loc))
+                 ~lid ~debug;
+          Ast_iterator.default_iterator.expr iterator e)
     | Pexp_jsx_element (Jsx_unary_element {jsx_unary_element_tag_name = lident})
       ->
       (*
