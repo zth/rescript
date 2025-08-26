@@ -2256,6 +2256,17 @@ let rec type_exp ~context ?recarg env sexp =
 *)
 
 and type_expect ~context ?in_function ?recarg env sexp ty_expected =
+  (* Special errors for braced identifiers passed to records *)
+  let context =
+    match sexp.pexp_desc with
+    | Pexp_ident _ ->
+      if
+        sexp.pexp_attributes
+        |> List.exists (fun (attr, _) -> attr.txt = "res.braces")
+      then Some Error_message_utils.BracedIdent
+      else context
+    | _ -> context
+  in
   let previous_saved_types = Cmt_format.get_saved_types () in
   let exp =
     Builtin_attributes.warning_scope sexp.pexp_attributes (fun () ->
