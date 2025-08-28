@@ -584,9 +584,9 @@ let scan_regex scanner =
       bring_buf_up_to_date ~start_offset:last_char_offset;
       Buffer.contents buf)
   in
-  let rec scan () =
+  let rec scan ?(in_char_class = false) () =
     match scanner.ch with
-    | '/' ->
+    | '/' when not in_char_class ->
       let last_char_offset = scanner.offset in
       next scanner;
       let pattern = result ~first_char_offset ~last_char_offset in
@@ -610,10 +610,16 @@ let scan_regex scanner =
     | '\\' ->
       next scanner;
       next scanner;
-      scan ()
+      scan ~in_char_class ()
+    | '[' when not in_char_class ->
+      next scanner;
+      scan ~in_char_class:true ()
+    | ']' when in_char_class ->
+      next scanner;
+      scan ~in_char_class:false ()
     | _ ->
       next scanner;
-      scan ()
+      scan ~in_char_class ()
   in
   let pattern, flags = scan () in
   let end_pos = position scanner in
