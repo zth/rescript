@@ -155,6 +155,8 @@ let descriptionToName (description : description) =
   | DeadWarning {deadWarning = WarningDeadValue} -> Issues.warningDeadValue
   | DeadWarning {deadWarning = WarningDeadValueWithSideEffects} ->
     Issues.warningDeadValueWithSideEffects
+  | DeadWarning {deadWarning = WarningUnusedModuleAlias} ->
+    Issues.warningUnusedModuleAlias
   | DeadWarning {deadWarning = IncorrectDeadAnnotation} ->
     Issues.incorrectDeadAnnotation
   | ExceptionAnalysis _ -> Issues.exceptionAnalysis
